@@ -17,13 +17,18 @@ public:
   Trie() {}
   template <typename InputIt>
   Trie ( InputIt first, InputIt last ) {
-    std::for_each ( first, last, [this] ( value_type it ) {
-      insert ( it );
-    } );
+    insert ( first, last );
   }
 
   T& operator[] ( Key const& key ) {
     return insert ( { key, T() } ).first->second;
+  }
+
+  template <typename InputIt>
+  void insert ( InputIt first, InputIt last ) {
+    std::for_each ( first, last, [this] ( value_type it ) {
+      insert ( it );
+    } );
   }
 
   typedef Key key_type;
@@ -107,6 +112,10 @@ private:
 
     bool operator!= ( Iterator const& other ) {
       return node_ != other.node_;
+    }
+
+    bool operator== ( Iterator const& other ) {
+      return !operator!= ( other );
     }
 
     Iterator& operator++ () {
