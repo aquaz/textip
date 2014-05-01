@@ -1,8 +1,10 @@
 #include <celero/Celero.h>
 #include "../trie/trie.hpp"
 #include <unordered_map>
+#include <map>
 #include <fstream>
 #include <algorithm>
+#include <iostream>
 
 CELERO_MAIN
 
@@ -43,15 +45,23 @@ struct KeyAccessBench : public FromFileBench {
   std::vector<std::string> lookup_;
 };
 
-BASELINE_F ( FillBenchmark, Hash, FromFileBench, 0, 10 ) {
+BASELINE_F ( FillBenchmark, StdHash, FromFileBench, 0, 10 ) {
   fill<std::unordered_map>();
+}
+
+BENCHMARK_F (FillBenchmark, StdMap, FromFileBench, 0, 10) {
+  fill<std::map>();
 }
 
 BENCHMARK_F ( FillBenchmark, Trie, FromFileBench, 0, 10 ) {
   fill<textip::Trie>();
 }
 
-BASELINE_F ( KeyAccessBenchmark, Hash, KeyAccessBench<std::unordered_map>, 0, 10 ) {
+BASELINE_F ( KeyAccessBenchmark, StdHash, KeyAccessBench<std::unordered_map>, 0, 10 ) {
+  read();
+}
+
+BENCHMARK_F (KeyAccessBenchmark, StdMap, KeyAccessBench<std::map>, 0, 10) {
   read();
 }
 
