@@ -13,7 +13,7 @@ BOOST_AUTO_TEST_CASE ( basic_operations ) {
     {"tertre", 40},
     {"tertrer", 48},
   };
-  textip::Trie<std::string,int> t ( m.begin(), m.end() );
+  textip::trie<std::string,int> t ( m.begin(), m.end() );
   for ( auto& p : m ) {
     BOOST_CHECK_EQUAL ( t[p.first], p.second );
   }

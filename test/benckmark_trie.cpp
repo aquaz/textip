@@ -49,22 +49,22 @@ BASELINE_F ( FillBenchmark, StdHash, FromFileBench, 0, 10 ) {
   fill<std::unordered_map>();
 }
 
-BENCHMARK_F (FillBenchmark, StdMap, FromFileBench, 0, 10) {
+BENCHMARK_F ( FillBenchmark, StdMap, FromFileBench, 0, 10 ) {
   fill<std::map>();
 }
 
-BENCHMARK_F ( FillBenchmark, Trie, FromFileBench, 0, 10 ) {
-  fill<textip::Trie>();
+BENCHMARK_F ( FillBenchmark, trie, FromFileBench, 0, 10 ) {
+  fill<textip::trie>();
 }
 
 BASELINE_F ( KeyAccessBenchmark, StdHash, KeyAccessBench<std::unordered_map>, 0, 10 ) {
   read();
 }
 
-BENCHMARK_F (KeyAccessBenchmark, StdMap, KeyAccessBench<std::map>, 0, 10) {
+BENCHMARK_F ( KeyAccessBenchmark, StdMap, KeyAccessBench<std::map>, 0, 10 ) {
   read();
 }
 
-BENCHMARK_F ( KeyAccessBenchmark, Trie, KeyAccessBench<textip::Trie>, 0, 10 ) {
+BENCHMARK_F ( KeyAccessBenchmark, trie, KeyAccessBench<textip::trie>, 0, 10 ) {
   read();
 }
