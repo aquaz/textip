@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(textip)
 
-add_definitions(--std=c++11 -Wall -Werror -Wextra -pedantic-errors)
+add_definitions(--std=c++1y -Wall -Werror -Wextra -pedantic-errors)
 
 enable_testing()
 

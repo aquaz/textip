@@ -12,30 +12,30 @@ class TrieDebug {
 private:
   typedef Trie<Key, T> trie_t;
 public:
-  TrieDebug ( trie_t const& t ) : t_ ( t ) {
+  TrieDebug(trie_t const& t) : t_(t) {
   }
 
-  friend std::ostream& operator<< ( std::ostream& ostr, TrieDebug&& td ) {
-    td.print_ ( ostr );
+  friend std::ostream& operator<< (std::ostream& ostr, TrieDebug && td) {
+    td.print_(ostr);
     return ostr;
   }
 private:
-  void print_ ( std::ostream& ostr ) {
-    printNode_ ( t_.root_, ostr );
+  void print_(std::ostream& ostr) {
+    printNode_(t_.root_, ostr);
   }
-  void printNode_ ( typename trie_t::Node const& node, std::ostream& ostr ) {
+  void printNode_(typename trie_t::Node const& node, std::ostream& ostr) {
     ostr << tab_;
-    ostr << std::string ( tab_, '.' );
-    if ( node.parent_ )
+    ostr << std::string(tab_, '.');
+    if (node.parent_)
       ostr << node.c_ << " ";
     ostr << "(" << &node.parent_ << ") " << &node << " ";
-    if ( node.val_ ) {
+    if (node.val_) {
       ostr << node.val_->second;
     }
     ostr << std::endl;
     ++tab_;
-    for ( auto& child : node.childs_ ) {
-      printNode_ ( child, ostr );
+    for (auto & child : node.childs_) {
+      printNode_(child, ostr);
     }
     --tab_;
   }
@@ -45,8 +45,8 @@ private:
 };
 
 template <typename Key, typename T>
-TrieDebug<Key, T> trie_debug ( Trie<Key, T> const& t ) {
-  return TrieDebug<Key, T> ( t );
+TrieDebug<Key, T> trie_debug(Trie<Key, T> const& t) {
+  return TrieDebug<Key, T> (t);
 }
 }
 

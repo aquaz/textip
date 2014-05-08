@@ -3,15 +3,19 @@
 
 #include <iterator>
 
+#include "../utils/mpl.hpp"
+
 namespace textip {
 namespace trie_impl_ {
 
 template <typename Node, bool Const>
 class trie_iterator : std::iterator<std::forward_iterator_tag, constify<typename Node::value_type, Const>> {
 public:
-  typedef constify<Node*, Const> node_p;
+  typedef constify<Node, Const>* node_p;
+  friend class trie_iterator<Node, true>;
+  trie_iterator(trie_iterator<Node, false> const& other) : trie_iterator(other.node_) {}
   trie_iterator() {}
-  trie_iterator ( node_p node ) : node_ ( next_valid_node_ ( node ) ) {
+  trie_iterator(node_p node) : node_(next_valid_node_(node)) {
 
   }
 
@@ -23,35 +27,35 @@ public:
     return &**this;
   }
 
-  bool operator!= ( trie_iterator const& other ) {
+  bool operator!= (trie_iterator const& other) {
     return node_ != other.node_;
   }
 
-  bool operator== ( trie_iterator const& other ) {
+  bool operator== (trie_iterator const& other) {
     return node_ == other.node_;
   }
 
   trie_iterator& operator++ () {
-    node_ = next_valid_node_ ( next_ ( node_ ) );
+    node_ = next_valid_node_(next_(node_));
     return *this;
   }
 private:
   // Find next node with a value (or itself if already valid)
-  static node_p next_valid_node_ ( node_p node ) {
-    while ( node && !node->value_ ) {
-      node = next_ ( node );
+  static node_p next_valid_node_(node_p node) {
+    while (node && !node->value_) {
+      node = next_(node);
     }
     return node;
   }
   // Immediate next node or null
-  static node_p next_ ( node_p node ) {
+  static node_p next_(node_p node) {
     node_p first_child = node->first_child();
-    if ( first_child ) {
+    if (first_child) {
       return first_child;
     }
-    while ( node ) {
+    while (node) {
       node_p adjacent = node->next_child();
-      if ( adjacent ) {
+      if (adjacent) {
         return adjacent;
       }
       node = node->parent();
