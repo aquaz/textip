@@ -44,6 +44,7 @@ public:
     ++*this;
     return tmp;
   }
+  node_p node() { return node_; } // TODO make trie friend and remove this
 private:
   // Find next node with a value (or itself if already valid)
   static node_p next_valid_node_(node_p node) {

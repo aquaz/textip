@@ -45,21 +45,27 @@ public:
     return insert(value_type(key, Mapped())).first->second;
   }
   const_iterator find(Key const& key) const {
-    auto it = key.begin();
-    auto end = key.end();
-    node_t const* node = &root_;
-    while (it != end) {
-      std::tie(it, node) = node->find_child(it, end);
-      if (node == nullptr) {
-        return iterator();
-      }
-    }
-    return const_iterator(node->value_ ? node : nullptr);
+    node_t const* node = find_node_(key);
+    return const_iterator(node && node->value_ ? node : nullptr);
+  }
+  iterator find(Key const& key) {
+    const_iterator it = static_cast<trie const*>(this)->find(key);
+    return iterator(const_cast<node_t*>(it.node()));
   }
   void erase(Key const& key) {
     auto it = find(key);
     if (it == end()) {
       return;
+    }
+    node_t* node = it.node();
+    node->value_ = boost::none;
+    while (!node->value_ && !node->first_child()) {
+      node_t* p = node->parent();
+      if (p == nullptr) {
+        break;
+      }
+      p->remove_child(node);
+      node = p;
     }
     --size_;
   }
@@ -81,6 +87,19 @@ public:
     return size_;
   }
 private:
+  // Find node at key
+  node_t const* find_node_(Key const& key) const {
+    auto it = key.begin();
+    auto end = key.end();
+    node_t const* node = &root_;
+    while (it != end) {
+      std::tie(it, node) = node->find_child(it, end);
+      if (node == nullptr) {
+        return nullptr;
+      }
+    }
+    return node;
+  }
   node_t root_ {nullptr};
   std::size_t size_ = 0;
 };

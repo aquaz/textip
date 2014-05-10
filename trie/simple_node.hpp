@@ -58,8 +58,9 @@ public:
     return { begin + 1, &*childs_.insert(it, simple_node(this, *begin)) };
   }
 
-  void erase() {
-
+  void remove_child(simple_node const* node) {
+    std::size_t pos = node - first_child();
+    childs_.erase(childs_.begin() + pos);
   }
 
   simple_node const* first_child() const {
