@@ -55,7 +55,7 @@ public:
     if (it != childs_.end() && it->c_ == *begin) {
       return { begin + 1, &*it};
     }
-    return { begin + 1, &*childs_.insert(it, simple_node(this, *begin)) };
+    return { begin + 1, &*childs_.emplace(it, this, *begin) };
   }
 
   void remove_child(simple_node const* node) {
