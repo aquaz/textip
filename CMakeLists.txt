@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(textip)
 
+set(CMAKE_CXX_COMPILER g++-4.9)
+
 add_definitions(--std=c++1y -Wall -Werror -Wextra -pedantic-errors)
 
 enable_testing()

@@ -56,6 +56,13 @@ public:
     }
     return const_iterator(node->value_ ? node : nullptr);
   }
+  void erase(Key const& key) {
+    auto it = find(key);
+    if (it == end()) {
+      return;
+    }
+    --size_;
+  }
   const_iterator begin() const {
     return const_iterator(&root_);
   }

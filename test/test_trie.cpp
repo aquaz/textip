@@ -12,8 +12,10 @@ void is_subset(MapA const& a, MapB const& b) {
   }
 }
 
-template <typename MapA, typename MapB>
-void is_same(MapA const& a, MapB const& b) {
+typedef std::unordered_map<std::string, int> reference_type;
+
+template <typename T>
+void is_same(reference_type const& a, T const& b) {
   BOOST_CHECK_EQUAL(a.size(), b.size());
   is_subset(a, b);
   is_subset(b, a);
@@ -27,17 +29,26 @@ void apply_##op(MapA& a, MapB& b, Args const& ...args) { \
 }
 
 apply_operation(insert)
+apply_operation(erase)
 
 void test_scenarii(std::vector<std::string> const& v) {
-  std::unordered_map<std::string, int> m;
+  reference_type m;
   textip::trie<std::string, int> t;
   int value = 0;
   for (std::string const& s : v) {
-    apply_insert(m, t, std::make_pair(s, ++value));
+    if (s.size() && s.front() == '-') {
+      apply_erase(m, t, s.substr(1));
+    } else {
+      apply_insert(m, t, std::make_pair(s, ++value));
+    }
   }
   is_same(m, t);
+  typedef std::vector<reference_type::value_type> values_t;
+  values_t mv(m.begin(), m.end());
+  values_t pv(t.begin(), t.end());
+  BOOST_CHECK(std::is_permutation(mv.begin(), mv.end(), pv.begin()));
 }
 
 BOOST_AUTO_TEST_CASE(associoative_container) {
-  test_scenarii( {"tést", "test", "etre", "testera", "tester", "tertre", "atre", "etait", "était"});
+  test_scenarii( {"tést", "test", "etre", "testera", "", "tester", "-test", "tertre", "atre", "etait", "était"});
 }

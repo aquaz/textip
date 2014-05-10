@@ -58,6 +58,10 @@ public:
     return { begin + 1, &*childs_.insert(it, simple_node(this, *begin)) };
   }
 
+  void erase() {
+
+  }
+
   simple_node const* first_child() const {
     return &childs_.front();
   }
@@ -67,8 +71,8 @@ public:
     if (this->parent() == nullptr) {
       return nullptr;
     }
-    auto& siblings = this->parent()->childs_;
-    std::size_t pos = this - first_child() + 1;
+    auto& siblings = parent_->childs_;
+    std::size_t pos = this - parent_->first_child() + 1;
     return pos < siblings.size() ? &siblings[pos] : nullptr;
   }
   NON_CONST_GETTER(next_child)
