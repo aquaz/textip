@@ -33,7 +33,7 @@ apply_operation(erase)
 
 void test_scenarii(std::vector<std::string> const& v) {
   reference_type m;
-  textip::trie<std::string, int> t;
+  textip::trie_p<std::string, int> t;
   int value = 0;
   for (std::string const& s : v) {
     if (s.size() && s.front() == '-') {
@@ -49,6 +49,8 @@ void test_scenarii(std::vector<std::string> const& v) {
   BOOST_CHECK(std::is_permutation(mv.begin(), mv.end(), pv.begin()));
 }
 
-BOOST_AUTO_TEST_CASE(associoative_container) {
+BOOST_AUTO_TEST_CASE(associative_container) {
   test_scenarii( {"tést", "test", "etre", "testera", "", "tester", "-test", "tertre", "atre", "etait", "était"});
+  test_scenarii( { "test", "testar", "testut", "-test" });
+  test_scenarii( { "test", "testar", "testut", "-testar", "-testut" });
 }

@@ -100,13 +100,15 @@ private:
     }
     return node;
   }
-  node_t root_ {nullptr};
+  node_t root_;
   std::size_t size_ = 0;
 };
 }
 
 template <typename K, typename V>
 using trie = trie_impl_::trie<K, V, trie_impl_::simple_node>;
+template <typename K, typename V>
+using trie_p = trie_impl_::trie<K, V, trie_impl_::simple_ptr_node>;
 
 }
 

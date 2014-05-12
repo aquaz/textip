@@ -1,70 +1,91 @@
-#include <celero/Celero.h>
 #include "../trie/trie.hpp"
+
+#include <celero/Celero.h>
 #include <unordered_map>
 #include <map>
 #include <fstream>
 #include <algorithm>
-#include <iostream>
+
+#include <boost/preprocessor/seq/for_each.hpp>
 
 CELERO_MAIN
 
-struct FromFileBench : public celero::TestFixture {
-  FromFileBench() {
+class Samples {
+public:
+
+  Samples& reset() { i = 0; return *this; }
+  auto& get() {
+    if (++i >= values.size())
+      i = 0;
+    return values[i];
+  }
+  static Samples& instance() {
+    static Samples ret;
+    return ret;
+  }
+  std::vector<std::pair<std::string, int>> values;
+private:
+  Samples() {
     std::ifstream ifs("../words.txt");
     std::string s;
 
     while (ifs >> s) {
-      values_.push_back( {s, 1});
+      values.push_back( {s, 1});
     }
+    srand(time(NULL));
+    std::random_shuffle(values.begin(), values.end());
   }
+  std::size_t i = 0;
+};
 
-  template <template <typename, typename, typename ...> class T>
-  void fill() {
-    T<std::string, int> t(values_.begin(), values_.end());
+Samples& first_ = Samples::instance();
+
+template <template <typename, typename, typename ...> class T>
+struct Fill : public celero::TestFixture {
+  void execute() {
+    celero::DoNotOptimizeAway(t[samples.get().first] = 1);
   }
-  std::vector<std::pair<std::string, int>> values_;
+  T<std::string, int> t;
+  Samples samples = Samples::instance().reset();
 };
 
 template <template <typename, typename, typename ...> class T>
-struct KeyAccessBench : public FromFileBench {
-  KeyAccessBench() {
-    std::random_shuffle(values_.begin(), values_.end());
-    std::size_t tier = values_.size() / 3;
-    t_.insert(values_.begin(), values_.begin() + 2 * tier);
-    std::for_each(values_.begin() + tier, values_.end(), [this](std::pair<std::string, int> const & x) {
-      lookup_.push_back(x.first);
-    });
+struct KeyAccess : public celero::TestFixture {
+  KeyAccess() {
+    auto& values = samples.values;
+    std::size_t third = values.size() / 3;
+    t_.insert(values.begin(), values.begin() + 2 * third);
   }
-  void read() {
-    std::accumulate(lookup_.begin(), lookup_.end(), 0, [this](int a, std::string const & b) {
-      auto it = t_.find(b);
-      return a + (it == t_.end() ? 0 : 1);
-    });
+  void execute() {
+    t_.find(samples.get().first);
   }
   T<std::string, int> t_;
-  std::vector<std::string> lookup_;
+  Samples samples = Samples::instance().reset();
 };
 
-BASELINE_F(FillBenchmark, StdHash, FromFileBench, 0, 10) {
-  fill<std::unordered_map>();
-}
+using namespace std;
+using namespace textip;
 
-BENCHMARK_F(FillBenchmark, StdMap, FromFileBench, 0, 10) {
-  fill<std::map>();
-}
+#define BASELINE_TYPE unordered_map
+#define TYPES (map)(trie)(trie_p)
 
-BENCHMARK_F(FillBenchmark, trie, FromFileBench, 0, 10) {
-  fill<textip::trie>();
-}
+const std::size_t nb_sample = 50;
+const std::size_t sample_size = 1000000;
 
-BASELINE_F(KeyAccessBenchmark, StdHash, KeyAccessBench<std::unordered_map>, 0, 10) {
-  read();
-}
+#define BENCH_TYPE_BASELINE(Test) \
+  BASELINE_F(Test, BASELINE_TYPE, Test<BASELINE_TYPE>, nb_sample, sample_size) { \
+    execute(); \
+  }
 
-BENCHMARK_F(KeyAccessBenchmark, StdMap, KeyAccessBench<std::map>, 0, 10) {
-  read();
-}
+#define BENCH_TYPE(r, data, elem) \
+  BENCHMARK_F(data, elem, data<elem>, nb_sample, sample_size) { \
+    execute(); \
+  }
 
-BENCHMARK_F(KeyAccessBenchmark, trie, KeyAccessBench<textip::trie>, 0, 10) {
-  read();
-}
+BENCH_TYPE_BASELINE(Fill)
+
+BOOST_PP_SEQ_FOR_EACH(BENCH_TYPE, Fill, TYPES)
+
+BENCH_TYPE_BASELINE(KeyAccess)
+
+BOOST_PP_SEQ_FOR_EACH(BENCH_TYPE, KeyAccess, TYPES)
