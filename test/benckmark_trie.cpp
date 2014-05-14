@@ -1,44 +1,13 @@
 #include "../trie/trie.hpp"
 
-#include <celero/Celero.h>
 #include <unordered_map>
 #include <map>
-#include <fstream>
-#include <algorithm>
 
 #include <boost/preprocessor/seq/for_each.hpp>
 
-CELERO_MAIN
+#include <celero/Celero.h>
 
-class Samples {
-public:
-
-  Samples& reset() { i = 0; return *this; }
-  auto& get() {
-    if (++i >= values.size())
-      i = 0;
-    return values[i];
-  }
-  static Samples& instance() {
-    static Samples ret;
-    return ret;
-  }
-  std::vector<std::pair<std::string, int>> values;
-private:
-  Samples() {
-    std::ifstream ifs("../words.txt");
-    std::string s;
-
-    while (ifs >> s) {
-      values.push_back( {s, 1});
-    }
-    srand(time(NULL));
-    std::random_shuffle(values.begin(), values.end());
-  }
-  std::size_t i = 0;
-};
-
-Samples& first_ = Samples::instance();
+#include "test_material.hpp"
 
 template <template <typename, typename, typename ...> class T>
 struct Fill : public celero::TestFixture {
@@ -62,6 +31,8 @@ struct KeyAccess : public celero::TestFixture {
   T<std::string, int> t_;
   Samples samples = Samples::instance().reset();
 };
+
+CELERO_MAIN
 
 using namespace std;
 using namespace textip;

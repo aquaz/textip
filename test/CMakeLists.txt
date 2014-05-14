@@ -7,3 +7,5 @@ include_directories(${CELERO_PATH}/include)
 find_library(CELERO_LIB celero ${CELERO_PATH}/build)
 add_executable(benchmark_trie benckmark_trie.cpp)
 target_link_libraries(benchmark_trie ${CELERO_LIB})
+
+add_executable(profile profile.cpp)
