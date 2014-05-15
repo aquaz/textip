@@ -31,9 +31,10 @@ void apply_##op(MapA& a, MapB& b, Args const& ...args) { \
 apply_operation(insert)
 apply_operation(erase)
 
+template <template<typename...> class T>
 void test_scenarii(std::vector<std::string> const& v) {
   reference_type m;
-  textip::trie_p<std::string, int> t;
+  T<std::string, int> t;
   int value = 0;
   for (std::string const& s : v) {
     if (s.size() && s.front() == '-') {
@@ -47,6 +48,10 @@ void test_scenarii(std::vector<std::string> const& v) {
   values_t mv(m.begin(), m.end());
   values_t pv(t.begin(), t.end());
   BOOST_CHECK(std::is_permutation(mv.begin(), mv.end(), pv.begin()));
+}
+
+void test_scenarii(std::vector<std::string> const& v) {
+  test_scenarii<textip::trie>(v);
 }
 
 BOOST_AUTO_TEST_CASE(associative_container) {

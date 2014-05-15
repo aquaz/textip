@@ -20,7 +20,7 @@ public:
   }
 
   typename trie_iterator::reference operator* () const {
-    return *node_->value_;
+    return *node_->value;
   }
 
   typename trie_iterator::pointer operator->() const {
@@ -48,7 +48,7 @@ public:
 private:
   // Find next node with a value (or itself if already valid)
   static node_p next_valid_node_(node_p node) {
-    while (node && !node->value_) {
+    while (node && !node->value) {
       node = next_(node);
     }
     return node;

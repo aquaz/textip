@@ -26,7 +26,7 @@ public:
   typedef NodeImpl<KeyTraits, value_type> node_t;
   typedef trie_iterator<node_t, true> const_iterator;
   typedef trie_iterator<node_t, false> iterator;
-  std::pair<iterator, bool> insert(value_type const& value) {
+  std::pair<iterator, bool> insert(value_type&& value) {
     Key const& key = value.first;
     auto it = key.begin();
     auto end = key.end();
@@ -34,11 +34,11 @@ public:
     while (it != end) {
       std::tie(it, node) = node->make_child(it, end);
     }
-    if (node->value_) {
+    if (node->value) {
       return { iterator(node), false };
     }
     ++size_;
-    node->value_ = boost::in_place(value);
+    node->value = std::make_unique<value_type>(std::move(value));
     return { iterator(node), true };
   }
   Mapped& operator[](Key const& key) {
@@ -46,7 +46,7 @@ public:
   }
   const_iterator find(Key const& key) const {
     node_t const* node = find_node_(key);
-    return const_iterator(node && node->value_ ? node : nullptr);
+    return const_iterator((node && node->value) ? node : nullptr);
   }
   iterator find(Key const& key) {
     const_iterator it = static_cast<trie const*>(this)->find(key);
@@ -58,8 +58,8 @@ public:
       return;
     }
     node_t* node = it.node();
-    node->value_ = boost::none;
-    while (!node->value_ && !node->first_child()) {
+    node->value = nullptr;
+    while (!node->value && !node->first_child()) {
       node_t* p = node->parent();
       if (p == nullptr) {
         break;
@@ -107,8 +107,6 @@ private:
 
 template <typename K, typename V>
 using trie = trie_impl_::trie<K, V, trie_impl_::simple_node>;
-template <typename K, typename V>
-using trie_p = trie_impl_::trie<K, V, trie_impl_::simple_ptr_node>;
 
 }
 

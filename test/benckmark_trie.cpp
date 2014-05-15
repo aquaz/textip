@@ -38,7 +38,7 @@ using namespace std;
 using namespace textip;
 
 #define BASELINE_TYPE unordered_map
-#define TYPES (map)(trie)(trie_p)
+#define TYPES (map)(trie)
 
 const std::size_t nb_sample = 50;
 const std::size_t sample_size = 1000000;
