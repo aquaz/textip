@@ -7,6 +7,7 @@
 
 namespace textip {
 namespace trie_impl_ {
+
 template <typename Key, typename Mapped, template <typename, typename> class NodeImpl, typename KeyTraits = key_traits<Key>>
 class trie {
 public:
@@ -30,7 +31,7 @@ public:
     Key const& key = value.first;
     auto it = key.begin();
     auto end = key.end();
-    node_t* node = &root_;
+    node_t* node = root();
     while (it != end) {
       std::tie(it, node) = node->make_child(it, end);
     }
@@ -70,10 +71,10 @@ public:
     --size_;
   }
   const_iterator begin() const {
-    return const_iterator(&root_);
+    return const_iterator(root());
   }
   iterator begin() {
-    return iterator(&root_);
+    return iterator(root());
   }
   const_iterator end() const {
     return const_iterator();
@@ -91,7 +92,7 @@ private:
   node_t const* find_node_(Key const& key) const {
     auto it = key.begin();
     auto end = key.end();
-    node_t const* node = &root_;
+    node_t const* node = root();
     while (it != end) {
       std::tie(it, node) = node->find_child(it, end);
       if (node == nullptr) {
@@ -100,7 +101,9 @@ private:
     }
     return node;
   }
-  node_t root_;
+
+  node_t* root() const { return root_.get(); }
+  decltype(node_t::make_root()) root_ = node_t::make_root();
   std::size_t size_ = 0;
 };
 }

@@ -19,6 +19,7 @@ public:
   typedef typename KeyTraits::iterator char_iterator;
   typedef typename KeyTraits::char_type char_type;
   typedef simple_node this_t;
+  static auto make_root() { return std::make_unique<this_t>(); }
 
   simple_node() {}
   simple_node(this_t const& other) = delete;
