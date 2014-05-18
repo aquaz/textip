@@ -5,10 +5,10 @@
 template <template <typename ...Args> class T>
 void profile() {
   T<std::string, int> t;
-  for (auto& v : Samples::instance().values)
-    t.insert(v);
+  for (int i = 0; i < 10; ++i)
+    t.insert(Samples::instance().get());
 }
 
 int main() {
-  profile<textip::trie>();
+  profile<textip::datrie>();
 }

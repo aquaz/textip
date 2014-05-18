@@ -1,5 +1,5 @@
-#ifndef TEXTIP_TRIE_SIMPLE_NODE_H
-#define TEXTIP_TRIE_SIMPLE_NODE_H
+#ifndef TEXTIP_TRIE_SIMPLE_TRIE_H
+#define TEXTIP_TRIE_SIMPLE_TRIE_H
 
 #include <algorithm>
 #include <memory>
@@ -13,21 +13,23 @@ namespace textip {
 namespace trie_impl_ {
 
 template <typename KeyTraits, typename Value>
-class simple_node {
+class simple_trie {
 public:
   typedef Value value_type;
   typedef typename KeyTraits::iterator char_iterator;
   typedef typename KeyTraits::char_type char_type;
-  typedef simple_node this_t;
-  static auto make_root() { return std::make_unique<this_t>(); }
+  typedef simple_trie this_t;
+  typedef this_t node_t;
+  this_t const* root() const { return this; }
+  NON_CONST_GETTER(root)
 
-  simple_node() {}
-  simple_node(this_t const& other) = delete;
-  simple_node& operator= (this_t const& other) = delete;
-  simple_node(this_t&& other) {
+  simple_trie() {}
+  simple_trie(this_t const& other) = delete;
+  simple_trie& operator= (this_t const& other) = delete;
+  simple_trie(this_t&& other) {
     *this = std::move(other);
   }
-  simple_node& operator= (this_t&& other) {
+  simple_trie& operator= (this_t&& other) {
     if (this != &other) {
       parent_ = other.parent_;
       value = std::move(other.value);
@@ -39,7 +41,7 @@ public:
     }
     return *this;
   }
-  simple_node(this_t* parent, char_type c) : parent_(parent), c_(c) {
+  simple_trie(this_t* parent, char_type c) : parent_(parent), c_(c) {
   }
 
   // Compare with character
@@ -102,4 +104,4 @@ private:
 }
 }
 
-#endif
+#endif /* !TEXTIP_TRIE_SIMPLE_TRIE_H */

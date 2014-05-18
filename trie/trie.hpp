@@ -3,7 +3,7 @@
 
 #include "key_traits.hpp"
 #include "trie_iterator.hpp"
-#include "simple_node.hpp"
+#include "simple_trie.hpp"
 #include "double_array.hpp"
 
 #include <initializer_list>
@@ -11,12 +11,13 @@
 namespace textip {
 namespace trie_impl_ {
 
-template <typename Key, typename Mapped, template <typename, typename> class NodeImpl, typename KeyTraits = key_traits<Key>>
+template <typename Key, typename Mapped, template <typename, typename> class TrieImpl, typename KeyTraits = key_traits<Key>>
 class trie {
 public:
   typedef Key key_type;
   typedef std::pair<const Key, Mapped> value_type;
-  typedef NodeImpl<KeyTraits, value_type> node_t;
+  typedef TrieImpl<KeyTraits, value_type> impl_t;
+  typedef typename impl_t::node_t node_t;
   typedef trie_iterator<node_t, true> const_iterator;
   typedef trie_iterator<node_t, false> iterator;
   trie() {}
@@ -109,16 +110,17 @@ private:
     return node;
   }
 
-  node_t* root() const { return root_.get(); }
-  decltype(node_t::make_root()) root_ = node_t::make_root();
+  node_t const* root() const { return impl_.root(); }
+  NON_CONST_GETTER(root)
+  impl_t impl_;
   std::size_t size_ = 0;
 };
 }
 
 template <typename K, typename V>
-using trie = trie_impl_::trie<K, V, trie_impl_::simple_node>;
+using trie = trie_impl_::trie<K, V, trie_impl_::simple_trie>;
 template <typename K, typename V>
-using datrie = trie_impl_::trie<K, V, trie_impl_::double_array_node>;
+using datrie = trie_impl_::trie<K, V, trie_impl_::double_array>;
 
 }
 
