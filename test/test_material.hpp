@@ -1,6 +1,9 @@
 #ifndef TEXTIP_TEST_MATERIAL_H
 #define TEXTIP_TEST_MATERIAL_H
 
+#include <ctime>
+#include <cstdlib>
+
 #include <algorithm>
 #include <fstream>
 #include <vector>
@@ -28,7 +31,8 @@ private:
     while (ifs >> s) {
       values.push_back( {s, 1});
     }
-    srand(time(NULL));
+    std::time_t t = std::time(NULL);
+    std::srand(t);
     std::random_shuffle(values.begin(), values.end());
   }
   std::size_t i = 0;

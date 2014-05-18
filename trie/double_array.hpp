@@ -42,7 +42,7 @@ private:
     typedef typename KeyTraits::iterator char_iterator;
     typedef typename KeyTraits::char_type char_type;
     typedef typename KeyTraits::char_mapped_type char_mapped_type;
-    typedef std::make_signed_t<char_mapped_type> char_offset_type;
+    typedef char_mapped_type char_offset_type;
 
     std::pair<char_iterator, this_t const*> find_child(char_iterator begin, char_iterator) const {
       this_t const& child = child_map_(*begin);
