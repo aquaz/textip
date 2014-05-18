@@ -157,14 +157,14 @@ private:
     // This may invalidate this pointer so the new this is also returned
     std::pair<this_t*, std::size_t> find_new_index_(char_mapped_type new_c) {
       auto& array = trie_->array_;
+      auto childs = childs_range(*this);
       for (std::size_t index = double_array::root_position + 1; index + KeyTraits::mapped_range - 1 < array.size(); ++index) {
-        auto childs = childs_range(*this);
         if (std::all_of(childs.begin(), childs.end(), [this, index](this_t const& node) {
-        return child_(node.position_() - index_).is_free_();
-        }) && child_(new_c).is_free_())
+        return node_at_(index + node.position_() - index_).is_free_();
+        }) && node_at_(index + new_c).is_free_())
         return { this, index };
       }
-      std::size_t pos = position_(); // save current position because this may be invalidated
+      std::size_t pos = position_(); // save current position because *this may be invalidated
       double_array* trie = trie_;
       std::size_t index = trie->grow_();
       return { &trie->array_[pos], index };

@@ -21,7 +21,8 @@ public:
   std::vector<std::pair<std::string, int>> values;
 private:
   Samples() {
-    std::ifstream ifs("../words.txt");
+    std::ifstream ifs("../../../words.txt");
+    if (!ifs) throw std::runtime_error("No file");
     std::string s;
 
     while (ifs >> s) {
