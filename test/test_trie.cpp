@@ -50,12 +50,17 @@ void test_scenarii(std::vector<std::string> const& v) {
   BOOST_CHECK(std::is_permutation(mv.begin(), mv.end(), pv.begin()));
 }
 
-void test_scenarii(std::vector<std::string> const& v) {
-  test_scenarii<textip::trie>(v);
+template <template<typename...> class T>
+void test_insert_remove() {
+  test_scenarii<T>( {"tést", "test", "etre", "testera", "", "tester", "-test", "tertre", "atre", "etait", "était"});
+  test_scenarii<T>( { "test", "testar", "testut", "-test" });
+  test_scenarii<T>( { "test", "testar", "testut", "-testar", "-testut" });
 }
 
-BOOST_AUTO_TEST_CASE(associative_container) {
-  test_scenarii( {"tést", "test", "etre", "testera", "", "tester", "-test", "tertre", "atre", "etait", "était"});
-  test_scenarii( { "test", "testar", "testut", "-test" });
-  test_scenarii( { "test", "testar", "testut", "-testar", "-testut" });
+BOOST_AUTO_TEST_CASE(trie) {
+  test_insert_remove<textip::trie>();
+}
+
+BOOST_AUTO_TEST_CASE(datrie) {
+  test_insert_remove<textip::datrie>();
 }

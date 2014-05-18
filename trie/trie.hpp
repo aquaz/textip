@@ -4,6 +4,9 @@
 #include "key_traits.hpp"
 #include "trie_iterator.hpp"
 #include "simple_node.hpp"
+#include "double_array.hpp"
+
+#include <initializer_list>
 
 namespace textip {
 namespace trie_impl_ {
@@ -11,7 +14,13 @@ namespace trie_impl_ {
 template <typename Key, typename Mapped, template <typename, typename> class NodeImpl, typename KeyTraits = key_traits<Key>>
 class trie {
 public:
+  typedef Key key_type;
+  typedef std::pair<const Key, Mapped> value_type;
+  typedef NodeImpl<KeyTraits, value_type> node_t;
+  typedef trie_iterator<node_t, true> const_iterator;
+  typedef trie_iterator<node_t, false> iterator;
   trie() {}
+  trie(std::initializer_list<value_type> il) : trie(il.begin(), il.end()) {}
   template <typename InputIt>
   trie(InputIt first, InputIt last) {
     insert(first, last);
@@ -22,11 +31,9 @@ public:
       insert(*first);
     }
   }
-  typedef Key key_type;
-  typedef std::pair<const Key, Mapped> value_type;
-  typedef NodeImpl<KeyTraits, value_type> node_t;
-  typedef trie_iterator<node_t, true> const_iterator;
-  typedef trie_iterator<node_t, false> iterator;
+  auto insert(value_type const& value) {
+    return insert(value_type(value));
+  }
   std::pair<iterator, bool> insert(value_type&& value) {
     Key const& key = value.first;
     auto it = key.begin();
@@ -110,6 +117,8 @@ private:
 
 template <typename K, typename V>
 using trie = trie_impl_::trie<K, V, trie_impl_::simple_node>;
+template <typename K, typename V>
+using datrie = trie_impl_::trie<K, V, trie_impl_::double_array_node>;
 
 }
 
