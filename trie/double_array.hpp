@@ -4,6 +4,10 @@
 #include <memory>
 #include <vector>
 
+#ifndef NDEBUG
+  #include <unordered_set>
+#endif
+
 #include "../utils/class_helpers.hpp"
 #include "child_iterator.hpp"
 
@@ -17,20 +21,55 @@ public:
   typedef node_structure_ node_t;
   double_array() {
     grow_(1 + root_position + KeyTraits::mapped_range);
+    array_.front().unused.prev_ = array_.size() - 1;
+    node_t& r = *root();
+    r.remove_from_free_list_();
+    r.used.index_ = root_position + 1;
+    r.used.first_child_ = 0;
+    assert_free_list_();
   }
   static constexpr std::size_t root_position = 1;
-  node_t const* root() const { return &array_[root_position]; }
+  node_t const* root() const {return &array_[root_position]; }
   NON_CONST_GETTER(root)
 private:
   std::vector<node_t> array_;
 
-  std::size_t grow_() { return grow_(array_.size()); }
+  void assert_free_list_() {
+#ifndef NDEBUG
+    std::size_t n = 0;
+    std::unordered_set<std::size_t> v;
+    do {
+      node_t& node = array_[n];
+      assert(node.parent_ == 0);
+      assert(array_[node.unused.prev_].unused.next_ == n);
+      v.insert(n);
+      n = node.unused.next_;
+    } while (n);
+    for (auto it = array_.begin() + 2; it != array_.end(); ++it) {
+      assert(it->parent_ != 0 || v.find(it->position_()) != v.end());
+    }
+#endif
+  }
+  std::size_t grow_() {
+    std::size_t last_size = grow_(array_.size());
+    std::size_t& first_prev = array_.front().unused.prev_;
+    array_[last_size].unused.prev_ = first_prev;
+    array_[first_prev].unused.next_ = last_size;
+    first_prev = array_.size() - 1;
+    assert_free_list_();
+    return last_size;
+  }
   std::size_t grow_(std::size_t size) {
     std::size_t last_size = array_.size();
     array_.resize(last_size + size);
+    std::size_t position = last_size;
     for (auto it = array_.begin() + last_size; it != array_.end(); ++it) {
       it->trie_ = this;
+      it->unused.next_ = position + 1;
+      it->unused.prev_ = position - 1;
+      ++position;
     }
+    array_.back().unused.next_ = 0;
     return last_size;
   }
 
@@ -53,7 +92,7 @@ private:
       insert_finder_(std::size_t index, char_mapped_type target) : index(index), target(target), prev_char(target) {}
       bool operator()(this_t const& node) {
         char_mapped_type c = node.position_() - index;
-        if (c < target && (c + node.next_ > target || node.next_ == 0)) {
+        if (c < target && (c + node.used.next_ > target || node.used.next_ == 0)) {
           prev_char = c;
           return true;
         }
@@ -70,13 +109,14 @@ private:
         this_t& child = child_(child_char);
         if (is_child_(child) || child.is_free_()) {
           if (child.is_free_()) {
-            insert_finder_ finder(index_, child_char);
+            insert_finder_ finder(used.index_, child_char);
             for (this_t const& node : childs_range(*this)) {
               if (finder(node))
                 break;
             }
             insert_child_(child_char, finder.prev_char);
           }
+          assert(valid_pos(child.position_()));
           return { begin + 1, &child };
         }
       }
@@ -85,44 +125,94 @@ private:
       std::tie(new_this, new_index) = find_new_index_(child_char);
       // From now *this may be invalidated, it must not be accessed
       new_this->relocate_(new_index, child_char);
+      assert(new_this->valid_pos(new_this->child_(child_char).position_()));
       return { begin + 1, &new_this->child_(child_char) };
     }
 
     // Relocate childs and insert new child
-    void relocate_(std::size_t new_index, char_mapped_type child_char) {
-      insert_finder_ finder(index_, child_char);
-      for (this_t& node : childs_range(*this)) {
-        char_mapped_type c = node.position_() - index_;
-        finder(node);
+    void relocate_(std::size_t new_index, char_mapped_type child_char) __attribute__((noinline)) {
+      insert_finder_ finder(used.index_, child_char);
+      for (this_t* node = first_child(); node;) {
+        char_mapped_type c = node->position_() - used.index_;
+        finder(*node);
         std::size_t new_node_pos = new_index + c;
         this_t& new_node = node_at_(new_node_pos);
-        for (this_t& child_node : childs_range(node)) {
+        for (this_t& child_node : childs_range(*node)) {
           child_node.parent_ = new_node_pos; // Update parent of moved child
         }
-        std::swap(new_node.parent_, node.parent_);
-        new_node.index_ = node.index_;
-        new_node.first_child_ = node.first_child_;
-        new_node.next_ = node.next_;
-        new_node.value = std::move(node.value);
+        this_t* next_node = node->next_child(); // Save next child because node will be invalid
+        new_node.remove_from_free_list_();
+        std::swap(new_node.parent_, node->parent_);
+        new_node.used.index_ = node->used.index_;
+        new_node.used.first_child_ = node->used.first_child_;
+        new_node.used.next_ = node->used.next_;
+        new_node.value = std::move(node->value);
+        node->add_to_free_list_();
+        assert(new_node.parent_ != 0);
+        assert(node->parent_ == 0);
+        node = next_node;
       }
-      index_ = new_index;
+      used.index_ = new_index;
       insert_child_(child_char, finder.prev_char);
+    }
+    bool valid_pos(std::size_t pos) const {
+      if (pos < trie_->array_.size())
+        return true; // for breakpoint
+      return false;
+    }
+    void add_to_free_list_() __attribute__((noinline)) {
+      std::size_t position = position_();
+      std::size_t n = position + 1;
+      for (; n < trie_->array_.size() && !node_at_(n).is_free_(); ++n)
+        ;
+      if (n == trie_->array_.size())
+        n = 0;
+      this_t& next = node_at_(n);
+      unused.next_ = n;
+      unused.prev_ = next.unused.prev_;
+      next.unused.prev_ = position;
+      node_at_(unused.prev_).unused.next_ = position;
+      assert(node_at_(unused.prev_).parent_ == 0);
+      trie_->assert_free_list_();
+    }
+    void remove_from_free_list_() __attribute__((noinline)) {
+      trie_->assert_free_list_();
+      assert(parent_ == 0);
+      assert(node_at_(unused.next_).parent_ == 0);
+      assert(node_at_(unused.prev_).parent_ == 0);
+      node_at_(unused.next_).unused.prev_ = unused.prev_;
+      node_at_(unused.prev_).unused.next_ = unused.next_;
     }
     // Insert child at child_char after child at prev_child_char.
     // If child_char == prev_child_char, insert as first child
-    void insert_child_(char_mapped_type child_char, char_mapped_type prev_child_char) {
+    void insert_child_(char_mapped_type child_char, char_mapped_type prev_child_char) __attribute__((noinline)) {
+      assert(valid_pos(used.index_ + child_char));
+      check_childs();
       this_t& new_child = child_(child_char);
+      new_child.remove_from_free_list_();
       new_child.parent_ = position_();
-      new_child.index_ = index_;
+      trie_->assert_free_list_();
+      new_child.used.index_ = used.index_;
+      new_child.used.first_child_ = 0;
       char_offset_type offset_to_child = child_char - prev_child_char;
       if (offset_to_child) {
-        char_offset_type& prev_next = child_(prev_child_char).next_;
-        new_child.next_ = prev_next ? prev_next - offset_to_child : 0;
+        char_offset_type& prev_next = child_(prev_child_char).used.next_;
+        new_child.used.next_ = prev_next ? prev_next - offset_to_child : 0;
         prev_next = offset_to_child;
       } else {
-        new_child.next_ = first_child() ? first_child_ - child_char : 0;
-        first_child_ = child_char;
+        new_child.used.next_ = first_child() ? used.first_child_ - child_char : 0;
+        used.first_child_ = child_char;
       }
+      check_childs();
+    }
+
+    void check_childs() const {
+#ifndef NDEBUG
+      for (this_t const& child : childs_range(*this)) {
+        assert(child.parent_);
+        assert(valid_pos(child.position_()));
+      }
+#endif
     }
 
     void remove_child(this_t const*) {
@@ -130,7 +220,7 @@ private:
     }
 
     this_t const* first_child() const {
-      this_t const& child = child_(first_child_);
+      this_t const& child = child_(used.first_child_);
       if (!is_child_(child))
         return nullptr;
       return &child;
@@ -138,9 +228,9 @@ private:
     NON_CONST_GETTER(first_child)
 
     this_t const* next_child() const {
-      if (0 == next_)
+      if (0 == used.next_)
         return nullptr;
-      return &node_at_(position_() + next_);
+      return &node_at_(position_() + used.next_);
     }
     NON_CONST_GETTER(next_child)
 
@@ -155,19 +245,20 @@ private:
   private:
     // Find index such that every childs and new childs are free
     // This may invalidate this pointer so the new this is also returned
-    std::pair<this_t*, std::size_t> find_new_index_(char_mapped_type new_c) {
+    std::pair<this_t*, std::size_t> find_new_index_(char_mapped_type new_c) __attribute__((noinline)) {
+      assert(valid_pos(position_()));
       auto& array = trie_->array_;
       auto childs = childs_range(*this);
       for (std::size_t index = double_array::root_position + 1; index + KeyTraits::mapped_range - 1 < array.size(); ++index) {
         if (std::all_of(childs.begin(), childs.end(), [this, index](this_t const& node) {
-        return node_at_(index + node.position_() - index_).is_free_();
+        return node_at_(index + node.position_() - used.index_).is_free_();
         }) && node_at_(index + new_c).is_free_())
         return { this, index };
       }
       std::size_t pos = position_(); // save current position because *this may be invalidated
       double_array* trie = trie_;
       std::size_t index = trie->grow_();
-      return { &trie->array_[pos], index };
+      return { &array[pos], index };
     }
     // Tell if a node is currently in use. This method must not be called on root node
     bool is_free_() const {
@@ -175,7 +266,7 @@ private:
     }
     // Fetch child without checking validity
     this_t& child_map_(char_type c) const { return child_(KeyTraits::map_char(c)); }
-    this_t& child_(char_mapped_type c) const { return node_at_(index_ + c); }
+    this_t& child_(char_mapped_type c) const { return node_at_(used.index_ + c); }
     // Check if this node is a child
     bool is_child_(this_t const& node) const { return node.parent_ == position_(); }
     // Position of this node in array
@@ -186,15 +277,26 @@ private:
     double_array* trie_ = nullptr;
     // Position of parent node. Unused nodes and root have it set to 0
     std::size_t parent_ = 0;
-    // Start index for child indexing
-    std::size_t index_ = double_array::root_position + 1;
-    // Offset to first child
-    char_mapped_type first_child_ = 0;
-    // Offset to next sibling or 0 if this is the last child
-    char_offset_type next_ = 0;
+    union {
+      // Lookup data for used node
+      struct {
+        // Start index for child indexing
+        std::size_t index_;
+        // Offset to first child
+        char_mapped_type first_child_;
+        // Offset to next sibling or 0 if this is the last child
+        char_offset_type next_;
+      } used;
+      // Doubly linked list for unused nodes
+      struct {
+        std::size_t next_; // Next free node
+        std::size_t prev_; // Prevoius free node
+      } unused;
+    };
   };
 };
 }
 }
 
 #endif /* !TEXTIP_TRIE_DOUBLE_ARRAY */
+

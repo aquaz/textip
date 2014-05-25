@@ -40,7 +40,7 @@ using namespace textip;
 #define BASELINE_TYPE unordered_map
 #define TYPES (datrie)(map)(trie)
 
-const std::size_t nb_sample = 50;
+const std::size_t nb_sample = 3;
 const std::size_t sample_size = 1000000;
 
 #define BENCH_TYPE_BASELINE(Test) \
