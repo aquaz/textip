@@ -173,8 +173,10 @@ private:
     // Relocate childs and insert new child
     void relocate_(std::size_t new_index, char_mapped_type child_char)  {
       insert_finder_ finder(used.index_, child_char);
+      std::size_t free_list_hint = 0;
       for (this_t* node = first_child(); node;) {
-        char_mapped_type c = node->position_() - used.index_;
+        std::size_t node_position = node->position_();
+        char_mapped_type c = node_position - used.index_;
         finder(*node);
         std::size_t new_node_pos = new_index + c;
         this_t& new_node = node_at_(new_node_pos);
@@ -188,7 +190,8 @@ private:
         new_node.used.first_child_ = node->used.first_child_;
         new_node.used.next_ = node->used.next_;
         new_node.value = std::move(node->value);
-        node->add_to_free_list_();
+        node->add_to_free_list_(free_list_hint);
+        free_list_hint = node_position;
         assert(new_node.parent_ != 0);
         assert(node->parent_ == 0);
         node = next_node;
@@ -201,13 +204,26 @@ private:
         return true; // for breakpoint
       return false;
     }
-    void add_to_free_list_()  {
+
+    // Find first free node after given position
+    // If hint is provided (not 0), start at free node hint
+    std::size_t find_free_node_(std::size_t position, std::size_t hint) {
+      if (hint) {
+        assert(node_at_(hint).is_free_());
+        return std::find_if(free_list_iterator(node_at_(hint)), trie_->end_free_node(),
+        [position](this_t const& node) { return node.position_() > position; }
+                           )->position_();
+      } else {
+        auto end_node = trie_->array_.end();
+        auto f = std::find_if(trie_->array_.begin() + position + 1, end_node,
+        [](this_t const& node) { return node.is_free_(); }
+                             );
+        return f == end_node ? 0 : f->position_();
+      }
+    }
+    void add_to_free_list_(std::size_t hint)  {
       std::size_t position = position_();
-      std::size_t n = position + 1;
-      for (; n < trie_->array_.size() && !node_at_(n).is_free_(); ++n)
-        ;
-      if (n == trie_->array_.size())
-        n = 0;
+      std::size_t n = find_free_node_(position, hint);
       this_t& next = node_at_(n);
       unused.next_ = n;
       unused.prev_ = next.unused.prev_;
