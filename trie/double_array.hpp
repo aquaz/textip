@@ -89,6 +89,17 @@ private:
       ++*this;
       return tmp;
     }
+    free_list_iterator_impl& operator-- () {
+      node_ = &node_->prev_free_();
+      return *this;
+    }
+    free_list_iterator_impl operator-- (int) {
+      auto tmp = *this;
+      --*this;
+      return tmp;
+    }
+    // Return non const iterator
+    auto remove_const() const { return free_list_iterator_impl<false>(*node_); }
     bool operator== (free_list_iterator_impl const& other) const {
       return node_ == other.node_;
     }
@@ -107,11 +118,11 @@ private:
   typedef free_list_iterator_impl<true> free_list_iterator_const;
   typedef free_list_iterator_impl<false> free_list_iterator;
   // Sentinel free node
-  auto end_free_node() { return free_list_iterator(array_[0]); }
-  auto free_list_range() {
+  auto end_free_node() const { return free_list_iterator_const(array_[0]); }
+  auto free_list_range() const {
     auto end = end_free_node();
     return boost::make_iterator_range(
-             free_list_iterator(end->next_free_()), end);
+             free_list_iterator_const(end->next_free_()), end);
   }
 
   class node_structure_ {
@@ -205,21 +216,15 @@ private:
       return false;
     }
 
-    // Find first free node after given position
-    // If hint is provided (not 0), start at free node hint
-    std::size_t find_free_node_(std::size_t position, std::size_t hint) {
-      if (hint) {
-        assert(node_at_(hint).is_free_());
-        return std::find_if(free_list_iterator(node_at_(hint)), trie_->end_free_node(),
-        [position](this_t const& node) { return node.position_() > position; }
-                           )->position_();
-      } else {
-        auto end_node = trie_->array_.end();
-        auto f = std::find_if(trie_->array_.begin() + position + 1, end_node,
-        [](this_t const& node) { return node.is_free_(); }
-                             );
-        return f == end_node ? 0 : f->position_();
+    // Find first freenode after position, starting at free node at hint
+    std::size_t find_free_node_(std::size_t position, std::size_t hint) const  {
+      if (!hint) {
+        hint = node_at_(0).next_free_().position_();
       }
+      assert(node_at_(hint).is_free_());
+      return std::find_if(free_list_iterator_const(node_at_(hint)), trie_->end_free_node(),
+      [position](this_t const& node) { return node.position_() > position; }
+                         )->position_();
     }
     void add_to_free_list_(std::size_t hint)  {
       std::size_t position = position_();
@@ -302,7 +307,7 @@ private:
   private:
     // Find index such that every childs and new childs are free
     // This may invalidate this pointer so the new this is also returned
-    std::pair<this_t*, std::size_t> find_new_index_(char_mapped_type new_c)  {
+    std::pair<this_t*, std::size_t> find_new_index_(char_mapped_type new_c) {
       assert(valid_pos(position_()));
       auto& array = trie_->array_;
       auto free_end = trie_->end_free_node();
@@ -325,12 +330,12 @@ private:
       return { &array[pos], index };
     }
     // Get next free node
-    this_t& next_free_() {
+    this_t const& next_free_() const {
       assert(is_free_());
       return node_at_(unused.next_);
     }
     // Get previous free node
-    this_t& prev_free_() {
+    this_t const& prev_free_() const {
       assert(is_free_());
       return node_at_(unused.prev_);
     }
@@ -365,7 +370,7 @@ private:
       // Doubly linked list for unused nodes
       struct {
         std::size_t next_; // Next free node
-        std::size_t prev_; // Prevoius free node
+        std::size_t prev_; // Previous free node
       } unused;
     };
   };
