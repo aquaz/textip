@@ -10,6 +10,12 @@
 #include <unordered_set>
 #endif
 
+#ifndef RELEASE
+#define profile_noinline __attribute__((noinline))
+#else
+#define profile_noinline
+#endif
+
 #include "../utils/class_helpers.hpp"
 #include "child_iterator.hpp"
 
@@ -135,7 +141,7 @@ private:
     typedef typename KeyTraits::char_mapped_type char_mapped_type;
     typedef char_mapped_type char_offset_type;
 
-    std::pair<char_iterator, this_t const*> find_child(char_iterator begin, char_iterator) const {
+    std::pair<char_iterator, this_t const*> find_child(char_iterator begin, char_iterator) const profile_noinline {
       this_t const& child = child_map_(*begin);
       return { begin + 1, is_child_(child) ? &child : nullptr };
     }
@@ -155,7 +161,7 @@ private:
       char_mapped_type prev_char;
     };
     // Find or create child matching *it
-    std::pair<char_iterator, this_t*> make_child(char_iterator begin, char_iterator) {
+    std::pair<char_iterator, this_t*> make_child(char_iterator begin, char_iterator) profile_noinline {
       char_mapped_type child_char = KeyTraits::map_char(*begin);
       {
         this_t& child = child_(child_char);
@@ -182,7 +188,7 @@ private:
     }
 
     // Relocate childs and insert new child
-    void relocate_(std::size_t new_index, char_mapped_type child_char)  {
+    void relocate_(std::size_t new_index, char_mapped_type child_char) profile_noinline {
       insert_finder_ finder(used.index_, child_char);
       std::size_t free_list_hint = 0;
       for (this_t* node = first_child(); node;) {
@@ -217,7 +223,7 @@ private:
     }
 
     // Find first freenode after position, starting at free node at hint
-    std::size_t find_free_node_(std::size_t position, std::size_t hint) const  {
+    std::size_t find_free_node_(std::size_t position, std::size_t hint) const profile_noinline {
       if (!hint) {
         hint = node_at_(0).next_free_().position_();
       }
@@ -226,7 +232,7 @@ private:
       [position](this_t const& node) { return node.position_() > position; }
                          )->position_();
     }
-    void add_to_free_list_(std::size_t hint)  {
+    void add_to_free_list_(std::size_t hint) profile_noinline {
       std::size_t position = position_();
       std::size_t n = find_free_node_(position, hint);
       this_t& next = node_at_(n);
@@ -307,7 +313,7 @@ private:
   private:
     // Find index such that every childs and new childs are free
     // This may invalidate this pointer so the new this is also returned
-    std::pair<this_t*, std::size_t> find_new_index_(char_mapped_type new_c) {
+    std::pair<this_t*, std::size_t> find_new_index_(char_mapped_type new_c) profile_noinline {
       assert(valid_pos(position_()));
       auto& array = trie_->array_;
       auto free_end = trie_->end_free_node();
