@@ -8,14 +8,14 @@
 namespace textip {
 namespace trie_impl_ {
 
-template <typename Node, bool Const>
-class trie_iterator : public std::iterator<std::forward_iterator_tag, constify<typename Node::value_type, Const>> {
+template <typename Trie, bool Const>
+class trie_iterator : public std::iterator<std::forward_iterator_tag, constify<typename Trie::node_t::value_type, Const>> {
 public:
-  typedef constify<Node, Const>* node_p;
-  friend class trie_iterator<Node, true>;
-  trie_iterator(trie_iterator<Node, false> const& other) : trie_iterator(other.node_) {}
+  typedef constify<typename Trie::node_t, Const>* node_p;
+  friend class trie_iterator<Trie, true>;
+  trie_iterator(trie_iterator<Trie, false> const& other) : trie_iterator(*other.trie_, other.node_) {}
   trie_iterator() {}
-  trie_iterator(node_p node) : node_(next_valid_node_(node)) {
+  trie_iterator(Trie const& trie, node_p node) : trie_(&trie), node_(next_valid_node_(node)) {
 
   }
 
@@ -47,27 +47,28 @@ public:
   node_p node() { return node_; } // TODO make trie friend and remove this
 private:
   // Find next node with a value (or itself if already valid)
-  static node_p next_valid_node_(node_p node) {
+  node_p next_valid_node_(node_p node) {
     while (node && !node->value) {
       node = next_(node);
     }
     return node;
   }
   // Immediate next node or null
-  static node_p next_(node_p node) {
-    node_p first_child = node->first_child();
+  node_p next_(node_p node) {
+    node_p first_child = node->first_child(*trie_);
     if (first_child) {
       return first_child;
     }
     while (node) {
-      node_p adjacent = node->next_child();
+      node_p adjacent = node->next_child(*trie_);
       if (adjacent) {
         return adjacent;
       }
-      node = node->parent();
+      node = node->parent(*trie_);
     }
     return nullptr;
   }
+  Trie const* trie_ = nullptr;
   node_p node_ = nullptr;
 };
 }

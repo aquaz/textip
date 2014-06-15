@@ -10,17 +10,17 @@ using constify = typename std::conditional<Const, const T, T>::type;
 
 template <typename T>
 struct remove_const_ref {
-  typedef typename std::remove_const<T>::type type;
+  typedef T type;
 };
 
 template <typename T>
-struct remove_const_ref<T*> {
-  typedef typename remove_const_ref<T>::type* type;
+struct remove_const_ref<T const*> {
+  typedef T* type;
 };
 
 template <typename T>
-struct remove_const_ref<T&> {
-  typedef typename remove_const_ref<T>::type& type;
+struct remove_const_ref<T const&> {
+  typedef T& type;
 };
 
 template <typename T>

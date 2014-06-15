@@ -49,7 +49,7 @@ public:
     return c_ < c;
   }
   // Find child matching *it
-  std::pair<char_iterator, this_t const*> find_child(char_iterator begin, char_iterator) const {
+  std::pair<char_iterator, this_t const*> find_child(this_t const&, char_iterator begin, char_iterator) const {
     auto it = std::lower_bound(childs_.begin(), childs_.end(), *begin);
     if (it == childs_.end() || it->c_ != *begin) {
       return { begin, nullptr };
@@ -57,7 +57,7 @@ public:
     return { begin + 1, &*it };
   }
   // Find or create child matching *it
-  std::pair<char_iterator, this_t*> make_child(char_iterator begin, char_iterator) {
+  std::pair<char_iterator, this_t*> make_child(this_t const&, char_iterator begin, char_iterator) {
     auto it = std::lower_bound(childs_.begin(), childs_.end(), *begin);
     if (it != childs_.end() && it->c_ == *begin) {
       return { begin + 1, &*it};
@@ -65,22 +65,22 @@ public:
     return { begin + 1, &*childs_.emplace(it, this, *begin) };
   }
 
-  void remove_child(this_t const* node) {
-    std::size_t pos = node - first_child();
+  void remove_child(this_t const& trie, this_t const* node) {
+    std::size_t pos = node - first_child(trie);
     childs_.erase(childs_.begin() + pos);
   }
 
-  this_t const* first_child() const {
+  this_t const* first_child(this_t const&) const {
     return &childs_.front();
   }
   NON_CONST_GETTER(first_child)
 
-  this_t const* next_child() const {
-    if (this->parent() == nullptr) {
+  this_t const* next_child(this_t const& t) const {
+    if (this->parent(t) == nullptr) {
       return nullptr;
     }
     auto& siblings = parent_->childs_;
-    std::size_t pos = this - parent_->first_child() + 1;
+    std::size_t pos = this - parent_->first_child(t) + 1;
     return pos < siblings.size() ? &siblings[pos] : nullptr;
   }
   NON_CONST_GETTER(next_child)
@@ -89,7 +89,7 @@ public:
     return c_;
   };
 
-  this_t const* parent() const {
+  this_t const* parent(this_t const& ) const {
     return parent_;
   }
   NON_CONST_GETTER(parent)

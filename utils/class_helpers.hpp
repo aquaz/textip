@@ -3,10 +3,14 @@
 
 #include "mpl.hpp"
 
+#include <utility>
+
 #define NON_CONST_GETTER(method) \
-  auto method() { \
+  template <typename... U> \
+  auto method(U&&... u) { \
     auto const* t = this;\
-    return const_cast<typename remove_const_ref<decltype(t->method())>::type>(t->method());\
+    return const_cast<remove_const_ref_t<decltype(t->method(std::forward<U>(u)...))>>( \
+      t->method(std::forward<U>(u)...));\
   }
 
 #endif /* !TEXTIP_UTILS_CLASS_HELPERS_H */

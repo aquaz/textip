@@ -31,7 +31,7 @@ public:
     grow_(1 + root_position + KeyTraits::mapped_range);
     array_.front().unused.prev_ = array_.size() - 1;
     node_t& r = *root();
-    r.remove_from_free_list_();
+    r.remove_from_free_list_(*this);
     r.used.index_ = root_position + 1;
     r.used.first_child_ = 0;
     assert_free_list_();
@@ -40,9 +40,10 @@ public:
   node_t const* root() const {return &array_[root_position]; }
   NON_CONST_GETTER(root)
 private:
-  std::vector<node_t> array_;
+  mutable std::vector<node_t> array_; // TODO Remove mutable
 
-  void assert_free_list_() {
+  node_t& node_at_(std::size_t pos) const { return array_[pos]; }
+  void assert_free_list_() const {
 #ifndef NDEBUG
     std::size_t n = 0;
     std::unordered_set<std::size_t> v;
@@ -72,7 +73,6 @@ private:
     array_.resize(last_size + size);
     std::size_t position = last_size;
     for (auto it = array_.begin() + last_size; it != array_.end(); ++it) {
-      it->trie_ = this;
       it->unused.next_ = position + 1;
       it->unused.prev_ = position - 1;
       ++position;
@@ -85,9 +85,9 @@ private:
   public:
     typedef typename free_list_iterator_impl::reference reference;
     typedef typename free_list_iterator_impl::pointer pointer;
-    free_list_iterator_impl(reference node) : node_(&node) {}
+    free_list_iterator_impl(double_array const& trie, reference node) : trie_(&trie), node_(&node) {}
     free_list_iterator_impl& operator++ () {
-      node_ = &node_->next_free_();
+      node_ = &node_->next_free_(*trie_);
       return *this;
     }
     free_list_iterator_impl operator++ (int) {
@@ -96,7 +96,7 @@ private:
       return tmp;
     }
     free_list_iterator_impl& operator-- () {
-      node_ = &node_->prev_free_();
+      node_ = &node_->prev_free_(*trie_);
       return *this;
     }
     free_list_iterator_impl operator-- (int) {
@@ -119,16 +119,17 @@ private:
       return node_;
     }
   private:
+    double_array const* trie_;
     pointer node_;
   };
   typedef free_list_iterator_impl<true> free_list_iterator_const;
   typedef free_list_iterator_impl<false> free_list_iterator;
   // Sentinel free node
-  auto end_free_node() const { return free_list_iterator_const(array_[0]); }
+  auto end_free_node() const { return free_list_iterator_const(*this, array_[0]); }
   auto free_list_range() const {
     auto end = end_free_node();
     return boost::make_iterator_range(
-             free_list_iterator_const(end->next_free_()), end);
+             free_list_iterator_const(*this, end->next_free_(*this)), end);
   }
 
   class node_structure_ {
@@ -141,171 +142,172 @@ private:
     typedef typename KeyTraits::char_mapped_type char_mapped_type;
     typedef char_mapped_type char_offset_type;
 
-    std::pair<char_iterator, this_t const*> find_child(char_iterator begin, char_iterator) const profile_noinline {
-      this_t const& child = child_map_(*begin);
-      return { begin + 1, is_child_(child) ? &child : nullptr };
+    std::pair<char_iterator, this_t const*> find_child(double_array const& trie, char_iterator begin, char_iterator) const profile_noinline {
+      this_t const& child = child_map_(trie, *begin);
+      return { begin + 1, is_child_(trie, child) ? &child : nullptr };
     }
 
     struct insert_finder_ {
-      insert_finder_(std::size_t index, char_mapped_type target) : index(index), target(target), prev_char(target) {}
+      insert_finder_(double_array const& trie, std::size_t index, char_mapped_type target) : trie(trie), index(index), target(target), prev_char(target) {}
       bool operator()(this_t const& node) {
-        char_mapped_type c = node.position_() - index;
+        char_mapped_type c = node.position_(trie) - index;
         if (c < target && (c + node.used.next_ > target || node.used.next_ == 0)) {
           prev_char = c;
           return true;
         }
         return false;
       }
+      double_array const& trie;
       std::size_t index;
       char_mapped_type target;
       char_mapped_type prev_char;
     };
     // Find or create child matching *it
-    std::pair<char_iterator, this_t*> make_child(char_iterator begin, char_iterator) profile_noinline {
+    std::pair<char_iterator, this_t*> make_child(double_array& trie, char_iterator begin, char_iterator) profile_noinline {
       char_mapped_type child_char = KeyTraits::map_char(*begin);
       {
-        this_t& child = child_(child_char);
-        if (is_child_(child) || child.is_free_()) {
+        this_t& child = child_(trie, child_char);
+        if (is_child_(trie, child) || child.is_free_()) {
           if (child.is_free_()) {
-            insert_finder_ finder(used.index_, child_char);
-            for (this_t const& node : childs_range(*this)) {
+            insert_finder_ finder(trie, used.index_, child_char);
+            for (this_t const& node : childs_range(trie, *this)) {
               if (finder(node))
                 break;
             }
-            insert_child_(child_char, finder.prev_char);
+            insert_child_(trie, child_char, finder.prev_char);
           }
-          assert(valid_pos(child.position_()));
+          assert(trie.valid_node(&child));
           return { begin + 1, &child };
         }
       }
       this_t* new_this;
       std::size_t new_index;
-      std::tie(new_this, new_index) = find_new_index_(child_char);
+      std::tie(new_this, new_index) = find_new_index_(trie, child_char);
       // From now *this may be invalidated, it must not be accessed
-      new_this->relocate_(new_index, child_char);
-      assert(new_this->valid_pos(new_this->child_(child_char).position_()));
-      return { begin + 1, &new_this->child_(child_char) };
+      new_this->relocate_(trie, new_index, child_char);
+      assert(trie.valid_node(&new_this->child_(trie, child_char)));
+      return { begin + 1, &new_this->child_(trie, child_char) };
     }
 
     // Relocate childs and insert new child
-    void relocate_(std::size_t new_index, char_mapped_type child_char) profile_noinline {
-      insert_finder_ finder(used.index_, child_char);
+    void relocate_(double_array const& trie, std::size_t new_index, char_mapped_type child_char) profile_noinline {
+      insert_finder_ finder(trie, used.index_, child_char);
       std::size_t free_list_hint = 0;
-      for (this_t* node = first_child(); node;) {
-        std::size_t node_position = node->position_();
+      for (this_t* node = first_child(trie); node;) {
+        std::size_t node_position = node->position_(trie);
         char_mapped_type c = node_position - used.index_;
         finder(*node);
         std::size_t new_node_pos = new_index + c;
-        this_t& new_node = node_at_(new_node_pos);
-        for (this_t& child_node : childs_range(*node)) {
+        this_t& new_node = trie.node_at_(new_node_pos);
+        for (this_t& child_node : childs_range(trie, *node)) {
           child_node.parent_ = new_node_pos; // Update parent of moved child
         }
-        this_t* next_node = node->next_child(); // Save next child because node will be invalid
-        new_node.remove_from_free_list_();
+        this_t* next_node = node->next_child(trie); // Save next child because node will be invalid
+        new_node.remove_from_free_list_(trie);
         std::swap(new_node.parent_, node->parent_);
         new_node.used.index_ = node->used.index_;
         new_node.used.first_child_ = node->used.first_child_;
         new_node.used.next_ = node->used.next_;
         new_node.value = std::move(node->value);
-        node->add_to_free_list_(free_list_hint);
+        node->add_to_free_list_(trie, free_list_hint);
         free_list_hint = node_position;
         assert(new_node.parent_ != 0);
         assert(node->parent_ == 0);
         node = next_node;
       }
       used.index_ = new_index;
-      insert_child_(child_char, finder.prev_char);
-    }
-    bool valid_pos(std::size_t pos) const {
-      if (pos < trie_->array_.size())
-        return true; // for breakpoint
-      return false;
+      insert_child_(trie, child_char, finder.prev_char);
     }
 
     // Find first freenode after position, starting at free node at hint
-    std::size_t find_free_node_(std::size_t position, std::size_t hint) const profile_noinline {
+    std::size_t find_free_node_(double_array const& trie, std::size_t hint) const profile_noinline {
       if (!hint) {
-        hint = node_at_(0).next_free_().position_();
+        hint = trie.node_at_(0).next_free_(trie).position_(trie);
       }
-      assert(node_at_(hint).is_free_());
-      return std::find_if(free_list_iterator_const(node_at_(hint)), trie_->end_free_node(),
-      [position](this_t const& node) { return node.position_() > position; }
-                         )->position_();
+      this_t const& start = trie.node_at_(hint);
+      assert(start.is_free_());
+      return std::find_if(free_list_iterator_const(trie, start), trie.end_free_node(),
+      [this](this_t const& node) { return &node > this; }
+                         )->position_(trie);
     }
-    void add_to_free_list_(std::size_t hint) profile_noinline {
-      std::size_t position = position_();
-      std::size_t n = find_free_node_(position, hint);
-      this_t& next = node_at_(n);
+    void add_to_free_list_(double_array const& trie, std::size_t hint) profile_noinline {
+      std::size_t position = position_(trie);
+      std::size_t n = find_free_node_(trie, hint);
+      this_t& next = trie.node_at_(n);
       unused.next_ = n;
       unused.prev_ = next.unused.prev_;
       next.unused.prev_ = position;
-      node_at_(unused.prev_).unused.next_ = position;
-      assert(node_at_(unused.prev_).parent_ == 0);
-      trie_->assert_free_list_();
+      trie.node_at_(unused.prev_).unused.next_ = position;
+      assert(trie.node_at_(unused.prev_).parent_ == 0);
+      trie.assert_free_list_();
     }
-    void remove_from_free_list_()  {
-      trie_->assert_free_list_();
+    void remove_from_free_list_(double_array const& trie)  {
+      trie.assert_free_list_();
       assert(parent_ == 0);
-      assert(node_at_(unused.next_).parent_ == 0);
-      assert(node_at_(unused.prev_).parent_ == 0);
-      node_at_(unused.next_).unused.prev_ = unused.prev_;
-      node_at_(unused.prev_).unused.next_ = unused.next_;
+      assert(trie.node_at_(unused.next_).parent_ == 0);
+      assert(trie.node_at_(unused.prev_).parent_ == 0);
+      next_free_(trie).unused.prev_ = unused.prev_;
+      prev_free_(trie).unused.next_ = unused.next_;
     }
     // Insert child at child_char after child at prev_child_char.
     // If child_char == prev_child_char, insert as first child
-    void insert_child_(char_mapped_type child_char, char_mapped_type prev_child_char)  {
-      assert(valid_pos(used.index_ + child_char));
-      check_childs();
-      this_t& new_child = child_(child_char);
-      new_child.remove_from_free_list_();
-      new_child.parent_ = position_();
-      trie_->assert_free_list_();
+    void insert_child_(double_array const& trie, char_mapped_type child_char, char_mapped_type prev_child_char)  {
+      check_childs(trie);
+      this_t& new_child = child_(trie, child_char);
+      assert(trie.valid_node(&new_child));
+      new_child.remove_from_free_list_(trie);
+      new_child.parent_ = position_(trie);
+      trie.assert_free_list_();
       new_child.used.index_ = used.index_;
       new_child.used.first_child_ = 0;
       char_offset_type offset_to_child = child_char - prev_child_char;
       if (offset_to_child) {
-        char_offset_type& prev_next = child_(prev_child_char).used.next_;
+        char_offset_type& prev_next = child_(trie, prev_child_char).used.next_;
         new_child.used.next_ = prev_next ? prev_next - offset_to_child : 0;
         prev_next = offset_to_child;
       } else {
-        new_child.used.next_ = first_child() ? used.first_child_ - child_char : 0;
+        new_child.used.next_ = first_child(trie) ? used.first_child_ - child_char : 0;
         used.first_child_ = child_char;
       }
-      check_childs();
+      check_childs(trie);
     }
 
-    void check_childs() const {
 #ifndef NDEBUG
+    void check_childs(double_array const& trie) const {
       for (this_t const& child : childs_range(*this)) {
         assert(child.parent_);
-        assert(valid_pos(child.position_()));
+        assert(trie.valid_node(&child));
       }
-#endif
     }
+#else
+    void check_childs(double_array const&) const {
 
-    void remove_child(this_t const*) {
+    }
+#endif
+
+    void remove_child(double_array const&, this_t const*) {
       //throw "not yet implemeted";
     }
 
-    this_t const* first_child() const {
-      this_t const& child = child_(used.first_child_);
-      if (!is_child_(child))
+    this_t const* first_child(double_array const& trie) const {
+      this_t const& child = child_(trie, used.first_child_);
+      if (!is_child_(trie, child))
         return nullptr;
       return &child;
     }
     NON_CONST_GETTER(first_child)
 
-    this_t const* next_child() const {
+    this_t const* next_child(double_array const&) const {
       if (0 == used.next_)
         return nullptr;
-      return &node_at_(position_() + used.next_);
+      return this + used.next_;
     }
     NON_CONST_GETTER(next_child)
 
-    this_t const* parent() const {
-      if (position_() == double_array::root_position)
+    this_t const* parent(double_array const& trie) const {
+      if (position_(trie) == root_position)
         return nullptr; // this is root node
-      return &node_at_(parent_);
+      return &trie.node_at_(parent_);
     }
     NON_CONST_GETTER(parent)
 
@@ -313,54 +315,48 @@ private:
   private:
     // Find index such that every childs and new childs are free
     // This may invalidate this pointer so the new this is also returned
-    std::pair<this_t*, std::size_t> find_new_index_(char_mapped_type new_c) profile_noinline {
+    std::pair<this_t*, std::size_t> find_new_index_(double_array& trie, char_mapped_type new_c) profile_noinline {
       assert(valid_pos(position_()));
-      auto& array = trie_->array_;
-      auto free_end = trie_->end_free_node();
-      auto f = boost::range::find_if(trie_->free_list_range(), [new_c](this_t const& node)
-      { return node.position_() > root_position + new_c; });
-      f = std::find_if(f, free_end, [this, childs = childs_range(*this),new_c, array_size = array.size()](this_t const& node) {
-        std::size_t index = node.position_() - new_c;
+      auto& array = trie.array_;
+      auto free_end = trie.end_free_node();
+      auto f = boost::range::find_if(trie.free_list_range(), [new_c, &trie](this_t const& node)
+      { return node.position_(trie) > root_position + new_c; });
+      f = std::find_if(f, free_end, [this, childs = childs_range(trie, *this),new_c, array_size = array.size(), &trie](this_t const& node) {
+        std::size_t index = node.position_(trie) - new_c;
         return index + KeyTraits::mapped_range - 1 < array_size
-               && std::all_of(childs.begin(), childs.end(),
-        [this, index](this_t const& node) {
-          return node_at_(index + (node.position_() - used.index_)).is_free_();
+        && std::all_of(childs.begin(), childs.end(),
+        [this, index, &trie](this_t const& node) {
+          return trie.node_at_(index + (node.position_(trie) - used.index_)).is_free_();
         });
       });
       if (f != free_end) {
-        return { this, f->position_() - new_c };
+        return { this, f->position_(trie) - new_c };
       }
-      std::size_t pos = position_(); // save current position because *this may be invalidated
-      double_array* trie = trie_;
-      std::size_t index = trie->grow_();
+      std::size_t pos = position_(trie); // save current position because *this may be invalidated
+      std::size_t index = trie.grow_();
       return { &array[pos], index };
     }
     // Get next free node
-    this_t const& next_free_() const {
-      assert(is_free_());
-      return node_at_(unused.next_);
+    this_t& next_free_(double_array const& trie) const {
+      assert(is_free_(trie));
+      return trie.node_at_(unused.next_);
     }
     // Get previous free node
-    this_t const& prev_free_() const {
-      assert(is_free_());
-      return node_at_(unused.prev_);
+    this_t& prev_free_(double_array const& trie) const {
+      assert(is_free_(trie));
+      return trie.node_at_(unused.prev_);
     }
     // Tell if a node is currently in use. This method must not be called on root node
     bool is_free_() const {
-      assert(position_() != root_position);
       return parent_ == 0;
     }
     // Fetch child without checking validity
-    this_t& child_map_(char_type c) const { return child_(KeyTraits::map_char(c)); }
-    this_t& child_(char_mapped_type c) const { return node_at_(used.index_ + c); }
+    this_t& child_map_(double_array const& trie, char_type c) const { return child_(trie, KeyTraits::map_char(c)); }
+    this_t& child_(double_array const& trie, char_mapped_type c) const { return trie.node_at_(used.index_ + c); }
     // Check if this node is a child
-    bool is_child_(this_t const& node) const { return node.parent_ == position_(); }
+    bool is_child_(double_array const& trie, this_t const& node) const { return node.parent_ == position_(trie); }
     // Position of this node in array
-    std::size_t position_() const { return this - &trie_->array_.front(); }
-    // Fetch node at postion
-    this_t& node_at_(std::size_t pos) const { return trie_->array_[pos]; }
-    // Global array pointer
-    double_array* trie_ = nullptr;
+    std::size_t position_(double_array const& trie) const { return this - &trie.array_.front(); }
     // Position of parent node. Unused nodes and root have it set to 0
     std::size_t parent_ = 0;
     union {
