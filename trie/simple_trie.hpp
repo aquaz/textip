@@ -71,23 +71,18 @@ public:
   }
 
   this_t const* first_child(this_t const&) const {
-    return &childs_.front();
+    return childs_.size() ? &childs_.front() : nullptr;
   }
   NON_CONST_GETTER(first_child)
 
   this_t const* next_child(this_t const& t) const {
-    if (this->parent(t) == nullptr) {
+    this_t const* p = parent(t);
+    if (p == nullptr || this == &p->childs_.back()) {
       return nullptr;
     }
-    auto& siblings = parent_->childs_;
-    std::size_t pos = this - parent_->first_child(t) + 1;
-    return pos < siblings.size() ? &siblings[pos] : nullptr;
+    return this + 1;
   }
   NON_CONST_GETTER(next_child)
-
-  char_type c() const {
-    return c_;
-  };
 
   this_t const* parent(this_t const& ) const {
     return parent_;
