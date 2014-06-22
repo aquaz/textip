@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../utils/class_helpers.hpp"
+#include "../utils/debug_tools.hpp"
 
 namespace textip { namespace trie_impl_ {
 
@@ -44,10 +45,10 @@ public:
     assert(chars_.size());
   }
   
-  bool operator< (char_type c) const {
+  bool operator< (char_type c) const profile_noinline {
     return index_char_() < c;
   }
-  std::pair<char_iterator, this_t const*> find_child(this_t const&, char_iterator begin, char_iterator end) const {
+  std::pair<char_iterator, this_t const*> find_child(this_t const&, char_iterator begin, char_iterator end) const profile_noinline {
     assert(begin != end);
     auto it = std::lower_bound(childs_.begin(), childs_.end(), *begin);
     if (it == childs_.end())

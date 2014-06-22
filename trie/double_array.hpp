@@ -11,13 +11,9 @@
 #include <unordered_set>
 #endif
 
-#ifndef RELEASE
-#define profile_noinline __attribute__((noinline))
-#else
-#define profile_noinline
-#endif
-
 #include "../utils/class_helpers.hpp"
+#include "../utils/debug_tools.hpp"
+
 #include "child_iterator.hpp"
 
 namespace textip {
