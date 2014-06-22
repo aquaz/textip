@@ -55,6 +55,7 @@ void test_insert_remove() {
   test_scenarii<T>( {"tést", "test", "etre", "testera", "", "tester", "-test", "tertre", "atre", "etait", "était"});
   test_scenarii<T>( { "test", "testar", "testut", "-test" });
   test_scenarii<T>( { "test", "testar", "testut", "-testar", "-testut" });
+  test_scenarii<T>( { "test", "te", "tesab", "teracl", "tero", "terobl" });
 }
 
 BOOST_AUTO_TEST_CASE(trie) {
