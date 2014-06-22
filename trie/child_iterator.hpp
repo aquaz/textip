@@ -8,18 +8,17 @@
 namespace textip {
 namespace trie_impl_ {
 
-template <typename Trie>
-class child_iterator : public std::iterator<std::forward_iterator_tag, typename Trie::node_t> {
+template <typename Trie, typename Node>
+class child_iterator : public std::iterator<std::forward_iterator_tag, Node> {
 public:
-  typedef typename Trie::node_t node_t;
-  child_iterator(Trie const& trie, node_t* node) : trie_(&trie), node_(node) {
+  child_iterator(Trie const& trie, Node* node) : trie_(&trie), node_(node) {
 
   }
   child_iterator() {}
-  node_t& operator* () const {
+  Node& operator* () const {
     return *node_;
   }
-  node_t* operator->() const {
+  Node* operator->() const {
     return node_;
   }
   bool operator!= (child_iterator const& other) const {
@@ -34,13 +33,14 @@ public:
   }
 private:
   Trie const* trie_ = nullptr;
-  node_t* node_ = nullptr;
+  Node* node_ = nullptr;
 };
 
 // Returns child range of node
-template <typename Trie>
-auto childs_range(Trie const& trie, typename Trie::node_t& node) {
-  return boost::make_iterator_range(child_iterator<Trie>(trie, node.first_child(trie)), child_iterator<Trie>());
+template <typename Trie, typename Node>
+auto childs_range(Trie const& trie, Node& node) {
+  return boost::make_iterator_range(child_iterator<Trie, Node>(trie, node.first_child(trie)),
+                                    child_iterator<Trie, Node>());
 }
 }
 }

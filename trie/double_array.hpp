@@ -43,6 +43,11 @@ private:
   mutable std::vector<node_t> array_; // TODO Remove mutable
 
   node_t& node_at_(std::size_t pos) const { return array_[pos]; }
+#ifndef NDEBUG
+  bool valid_node_(node_t const* node) const {
+    return array_.size() && node >= &array_.front() && node <= &array_.back();
+  }
+#endif
   void assert_free_list_() const {
 #ifndef NDEBUG
     std::size_t n = 0;
@@ -55,7 +60,7 @@ private:
       n = node.unused.next_;
     } while (n);
     for (auto it = array_.begin() + 2; it != array_.end(); ++it) {
-      assert(it->parent_ != 0 || v.find(it->position_()) != v.end());
+      assert(it->parent_ != 0 || v.find(it->position_(*this)) != v.end());
     }
 #endif
   }
@@ -176,7 +181,7 @@ private:
             }
             insert_child_(trie, child_char, finder.prev_char);
           }
-          assert(trie.valid_node(&child));
+          assert(trie.valid_node_(&child));
           return { begin + 1, &child };
         }
       }
@@ -185,7 +190,7 @@ private:
       std::tie(new_this, new_index) = find_new_index_(trie, child_char);
       // From now *this may be invalidated, it must not be accessed
       new_this->relocate_(trie, new_index, child_char);
-      assert(trie.valid_node(&new_this->child_(trie, child_char)));
+      assert(trie.valid_node_(&new_this->child_(trie, child_char)));
       return { begin + 1, &new_this->child_(trie, child_char) };
     }
 
@@ -254,7 +259,7 @@ private:
     void insert_child_(double_array const& trie, char_mapped_type child_char, char_mapped_type prev_child_char)  {
       check_childs(trie);
       this_t& new_child = child_(trie, child_char);
-      assert(trie.valid_node(&new_child));
+      assert(trie.valid_node_(&new_child));
       new_child.remove_from_free_list_(trie);
       new_child.parent_ = position_(trie);
       trie.assert_free_list_();
@@ -274,9 +279,9 @@ private:
 
 #ifndef NDEBUG
     void check_childs(double_array const& trie) const {
-      for (this_t const& child : childs_range(*this)) {
+      for (this_t const& child : childs_range(trie, *this)) {
         assert(child.parent_);
-        assert(trie.valid_node(&child));
+        assert(trie.valid_node_(&child));
       }
     }
 #else
@@ -316,7 +321,7 @@ private:
     // Find index such that every childs and new childs are free
     // This may invalidate this pointer so the new this is also returned
     std::pair<this_t*, std::size_t> find_new_index_(double_array& trie, char_mapped_type new_c) profile_noinline {
-      assert(valid_pos(position_()));
+      assert(trie.valid_node_(this));
       auto& array = trie.array_;
       auto free_end = trie.end_free_node();
       auto f = boost::range::find_if(trie.free_list_range(), [new_c, &trie](this_t const& node)
@@ -338,12 +343,12 @@ private:
     }
     // Get next free node
     this_t& next_free_(double_array const& trie) const {
-      assert(is_free_(trie));
+      assert(is_free_());
       return trie.node_at_(unused.next_);
     }
     // Get previous free node
     this_t& prev_free_(double_array const& trie) const {
-      assert(is_free_(trie));
+      assert(is_free_());
       return trie.node_at_(unused.prev_);
     }
     // Tell if a node is currently in use. This method must not be called on root node
