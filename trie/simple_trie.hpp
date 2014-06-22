@@ -5,8 +5,6 @@
 #include <memory>
 #include <vector>
 
-#include <boost/optional.hpp>
-
 #include "../utils/class_helpers.hpp"
 
 namespace textip {

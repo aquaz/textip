@@ -64,3 +64,7 @@ BOOST_AUTO_TEST_CASE(trie) {
 BOOST_AUTO_TEST_CASE(datrie) {
   test_insert_remove<textip::datrie>();
 }
+
+BOOST_AUTO_TEST_CASE(ptrie) {
+  test_insert_remove<textip::ptrie>();
+}

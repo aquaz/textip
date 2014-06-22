@@ -4,6 +4,7 @@
 #include "key_traits.hpp"
 #include "trie_iterator.hpp"
 #include "simple_trie.hpp"
+#include "simple_ptrie.hpp"
 #include "double_array.hpp"
 
 #include <initializer_list>
@@ -119,6 +120,8 @@ private:
 
 template <typename K, typename V>
 using trie = trie_impl_::trie<K, V, trie_impl_::simple_trie>;
+template <typename K, typename V>
+using ptrie = trie_impl_::trie<K, V, trie_impl_::simple_ptrie>;
 template <typename K, typename V>
 using datrie = trie_impl_::trie<K, V, trie_impl_::double_array>;
 

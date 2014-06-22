@@ -3,6 +3,7 @@
 
 #include <boost/range/algorithm.hpp>
 
+#include <cassert>
 #include <memory>
 #include <vector>
 
