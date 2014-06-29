@@ -14,7 +14,6 @@ template <typename KeyTraits, typename Value>
 class simple_trie {
 public:
   typedef Value value_type;
-  typedef typename KeyTraits::iterator char_iterator;
   typedef typename KeyTraits::char_type char_type;
   typedef simple_trie this_t;
   typedef this_t node_t;
@@ -47,7 +46,8 @@ public:
     return c_ < c;
   }
   // Find child matching *it
-  std::pair<char_iterator, this_t const*> find_child(this_t const&, char_iterator begin, char_iterator) const {
+  template <typename CharIt>
+  std::pair<CharIt, this_t const*> find_child(this_t const&, CharIt begin, CharIt) const {
     auto it = std::lower_bound(childs_.begin(), childs_.end(), *begin);
     if (it == childs_.end() || it->c_ != *begin) {
       return { begin, nullptr };
@@ -55,7 +55,8 @@ public:
     return { begin + 1, &*it };
   }
   // Find or create child matching *it
-  std::pair<char_iterator, this_t*> make_child(this_t const&, char_iterator begin, char_iterator) {
+  template <typename CharIt>
+  std::pair<CharIt, this_t*> make_child(this_t const&, CharIt begin, CharIt) {
     auto it = std::lower_bound(childs_.begin(), childs_.end(), *begin);
     if (it != childs_.end() && it->c_ == *begin) {
       return { begin + 1, &*it};
@@ -82,7 +83,7 @@ public:
   }
   NON_CONST_GETTER(next_child)
 
-  this_t const* parent(this_t const& ) const {
+  this_t const* parent(this_t const&) const {
     return parent_;
   }
   NON_CONST_GETTER(parent)

@@ -18,6 +18,8 @@ public:
   typedef Key key_type;
   typedef std::pair<const Key, Mapped> value_type;
   typedef TrieImpl<KeyTraits, value_type> impl_t;
+  typedef node_interface<impl_t, true> const_node_i;
+  typedef node_interface<impl_t, false> node_i;
   typedef typename impl_t::node_t node_t;
   typedef trie_iterator<impl_t, true> const_iterator;
   typedef trie_iterator<impl_t, false> iterator;
@@ -40,34 +42,33 @@ public:
     Key const& key = value.first;
     auto it = key.begin();
     auto end = key.end();
-    node_t* node = root();
+    node_t* node = impl_.root();
     while (it != end) {
       std::tie(it, node) = node->make_child(impl_, it, end);
     }
     if (node->value) {
-      return { iterator(impl_, node), false };
+      return { iterator(node_i(impl_, node)), false };
     }
     ++size_;
     node->value = std::make_unique<value_type>(std::move(value));
-    return { iterator(impl_, node), true };
+    return { iterator(node_i(impl_, node)), true };
   }
   Mapped& operator[](Key const& key) {
     return insert(value_type(key, Mapped())).first->second;
   }
   const_iterator find(Key const& key) const {
-    node_t const* node = find_node_(key);
-    return const_iterator(impl_, (node && node->value) ? node : nullptr);
+    auto node = root().find(key.begin(), key.end());
+    return const_iterator((node && node.value()) ? node : nullptr);
   }
   iterator find(Key const& key) {
-    const_iterator it = static_cast<trie const*>(this)->find(key);
-    return iterator(impl_, const_cast<node_t*>(it.node()));
+    return static_cast<trie const*>(this)->find(key).remove_const();
   }
   void erase(Key const& key) {
     auto it = find(key);
     if (it == end()) {
       return;
     }
-    node_t* node = it.node();
+    node_t* node = it.node().ptr();
     node->value = nullptr;
     while (!node->value && !node->first_child(impl_)) {
       node_t* p = node->parent(impl_);
@@ -80,10 +81,10 @@ public:
     --size_;
   }
   const_iterator begin() const {
-    return const_iterator(impl_, root());
+    return const_iterator(root());
   }
   iterator begin() {
-    return iterator(impl_, root());
+    return iterator(node_i(impl_, impl_.root()));
   }
   const_iterator end() const {
     return const_iterator();
@@ -96,23 +97,10 @@ public:
   std::size_t size() const {
     return size_;
   }
-private:
-  // Find node at key
-  node_t const* find_node_(Key const& key) const {
-    auto it = key.begin();
-    auto end = key.end();
-    node_t const* node = root();
-    while (it != end) {
-      std::tie(it, node) = node->find_child(impl_, it, end);
-      if (node == nullptr) {
-        return nullptr;
-      }
-    }
-    return node;
-  }
 
-  node_t const* root() const { return impl_.root(); }
-  NON_CONST_GETTER(root)
+  const_node_i root() const { return const_node_i(impl_, impl_.root()); }
+private:
+
   impl_t impl_;
   std::size_t size_ = 0;
 };

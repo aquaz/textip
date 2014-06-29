@@ -42,12 +42,12 @@ void test_scenarii(std::vector<std::string> const& v) {
     } else {
       apply_insert(m, t, std::make_pair(s, ++value));
     }
+    is_same(m, t);
+    typedef std::vector<reference_type::value_type> values_t;
+    values_t mv(m.begin(), m.end());
+    values_t pv(t.begin(), t.end());
+    BOOST_CHECK(std::is_permutation(mv.begin(), mv.end(), pv.begin()));
   }
-  is_same(m, t);
-  typedef std::vector<reference_type::value_type> values_t;
-  values_t mv(m.begin(), m.end());
-  values_t pv(t.begin(), t.end());
-  BOOST_CHECK(std::is_permutation(mv.begin(), mv.end(), pv.begin()));
 }
 
 template <template<typename...> class T>

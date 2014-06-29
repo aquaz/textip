@@ -139,12 +139,12 @@ private:
     friend class double_array;
     typedef node_structure_ this_t;
     typedef Value value_type;
-    typedef typename KeyTraits::iterator char_iterator;
     typedef typename KeyTraits::char_type char_type;
     typedef typename KeyTraits::char_mapped_type char_mapped_type;
     typedef char_mapped_type char_offset_type;
 
-    std::pair<char_iterator, this_t const*> find_child(double_array const& trie, char_iterator begin, char_iterator) const profile_noinline {
+    template <typename CharIt>
+    std::pair<CharIt, this_t const*> find_child(double_array const& trie, CharIt begin, CharIt) const {
       this_t const& child = child_map_(trie, *begin);
       return { begin + 1, is_child_(trie, child) ? &child : nullptr };
     }
@@ -164,8 +164,10 @@ private:
       char_mapped_type target;
       char_mapped_type prev_char;
     };
+
     // Find or create child matching *it
-    std::pair<char_iterator, this_t*> make_child(double_array& trie, char_iterator begin, char_iterator) profile_noinline {
+    template <typename CharIt>
+    std::pair<CharIt, this_t*> make_child(double_array& trie, CharIt begin, CharIt) {
       char_mapped_type child_char = KeyTraits::map_char(*begin);
       {
         this_t& child = child_(trie, child_char);
