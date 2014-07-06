@@ -13,6 +13,7 @@ namespace trie_impl_ {
 template <typename KeyTraits, typename Value>
 class simple_trie {
 public:
+  typedef KeyTraits key_traits;
   typedef Value value_type;
   typedef typename KeyTraits::char_type char_type;
   typedef simple_trie this_t;

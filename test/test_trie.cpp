@@ -56,6 +56,12 @@ void test_insert_remove() {
   test_scenarii<T>( { "test", "testar", "testut", "-test" });
   test_scenarii<T>( { "test", "testar", "testut", "-testar", "-testut" });
   test_scenarii<T>( { "test", "te", "tesab", "teracl", "tero", "terobl" });
+
+  T<std::string, int> t = { { "test", 8}, { "other", 5 } };
+  T<std::string, int> const& tc = t;
+  BOOST_CHECK_EQUAL(t["test"], 8);
+  tc.root().find("test").value()->second = 2;
+  BOOST_CHECK_EQUAL(t["test"], 2);
 }
 
 BOOST_AUTO_TEST_CASE(trie) {

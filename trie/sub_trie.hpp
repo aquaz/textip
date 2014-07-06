@@ -12,6 +12,7 @@ class node_interface {
 public:
   typedef constify<Trie, Const> trie_t;
   typedef constify<typename Trie::node_t, Const> node_t;
+  typedef typename Trie::key_traits::key_type key_type;
   node_interface(std::nullptr_t = nullptr) {}
   node_interface(trie_t& trie, node_t* node)
     : trie_(&trie), node_(node) {
@@ -24,8 +25,12 @@ public:
     return node_interface(*trie_, node);
   }
 
+  node_interface find(key_type const& key) const {
+    return find(std::begin(key), std::end(key));
+  }
+
   template <typename CharIt>
-  node_interface find(CharIt begin, CharIt end) {
+  node_interface find(CharIt begin, CharIt end) const {
     node_t* n = node_;
     CharIt it = begin;
     while (it != end && n) {

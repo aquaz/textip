@@ -23,6 +23,7 @@ template <typename KeyTraits, typename Value>
 class double_array {
   class node_structure_;
 public:
+  typedef KeyTraits key_traits;
   typedef node_structure_ node_t;
   double_array() {
     grow_(1 + root_position + KeyTraits::mapped_range);

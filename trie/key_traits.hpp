@@ -9,6 +9,7 @@ namespace trie_impl_ {
 
 template <typename T>
 struct key_traits {
+  typedef T key_type;
   typedef typename T::value_type char_type;
   typedef std::make_unsigned_t<char_type> char_mapped_type;
   static constexpr char_mapped_type map_char(char_type c) { return c; }

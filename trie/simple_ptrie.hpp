@@ -18,6 +18,7 @@ class simple_ptrie {
   typedef std::vector<char_type> chars_t;
   typedef simple_ptrie this_t;
 public:
+  typedef KeyTraits key_traits;
   typedef Value value_type;
   typedef this_t node_t;
   this_t const* root() const { return this; }
