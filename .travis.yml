@@ -4,4 +4,4 @@ compiler:
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y libboost-all-dev
-script: mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ../ && make test
+script: mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ../ && make && make test
