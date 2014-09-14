@@ -13,4 +13,12 @@
       t->method(std::forward<U>(u)...));\
   }
 
+#define GENERATE_HAS_MEMBER(X) \
+template <typename T> \
+struct has_member_##X{ \
+template <typename V> static constexpr bool value_(decltype(&V::X)) { return true; } \
+template <typename V> static constexpr bool value_(...) { return false; } \
+static constexpr bool value = value_<T>(nullptr); \
+}
+
 #endif /* !TEXTIP_UTILS_CLASS_HELPERS_H */

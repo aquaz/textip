@@ -3,7 +3,7 @@
 
 #include <iterator>
 
-#include "sub_trie.hpp"
+#include "trie_node_proxy.hpp"
 
 namespace textip {
 namespace trie_impl_ {
@@ -11,7 +11,7 @@ namespace trie_impl_ {
 template <typename Trie, bool Const>
 class trie_iterator : public std::iterator<std::forward_iterator_tag, constify<typename Trie::node_t::value_type, Const>> {
 public:
-  typedef node_interface<Trie, Const> node_t;
+  typedef trie_node_proxy<Trie, Const> node_t;
   friend class trie_iterator<Trie, true>;
   trie_iterator(trie_iterator<Trie, false> const& other) : trie_iterator(other.node_) {}
   trie_iterator() {}
@@ -70,7 +70,7 @@ private:
       }
       node = node.parent();
     }
-    return nullptr;
+    return node_t();
   }
   node_t node_;
 };

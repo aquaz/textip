@@ -1,11 +1,13 @@
 #ifndef TEXTIP_TRIE_TRIE_H
 #define TEXTIP_TRIE_TRIE_H
 
+#include "double_array.hpp"
 #include "key_traits.hpp"
-#include "trie_iterator.hpp"
 #include "simple_trie.hpp"
 #include "simple_ptrie.hpp"
-#include "double_array.hpp"
+#include "trie_iterator.hpp"
+#include "trie_node_proxy.hpp"
+#include "sub_trie.hpp"
 
 #include <initializer_list>
 
@@ -18,8 +20,10 @@ public:
   typedef Key key_type;
   typedef std::pair<const Key, Mapped> value_type;
   typedef TrieImpl<KeyTraits, value_type> impl_t;
-  typedef node_interface<impl_t, true> const_node_i;
-  typedef node_interface<impl_t, false> node_i;
+  typedef trie_node_proxy<impl_t, true> const_node_proxy;
+  typedef trie_node_proxy<impl_t, false> node_proxy;
+  //typedef sub_trie<impl_t, true> const_sub_trie;
+  //typedef sub_trie<impl_t, false> sub_trie;
   typedef typename impl_t::node_t node_t;
   typedef trie_iterator<impl_t, true> const_iterator;
   typedef trie_iterator<impl_t, false> iterator;
@@ -47,18 +51,18 @@ public:
       std::tie(it, node) = node->make_child(impl_, it, end);
     }
     if (node->value) {
-      return { iterator(node_i(impl_, node)), false };
+      return { iterator(node_proxy(impl_, node)), false };
     }
     ++size_;
     node->value = std::make_unique<value_type>(std::move(value));
-    return { iterator(node_i(impl_, node)), true };
+    return { iterator(node_proxy(impl_, node)), true };
   }
   Mapped& operator[](Key const& key) {
     return insert(value_type(key, Mapped())).first->second;
   }
   const_iterator find(Key const& key) const {
-    auto node = root().find(key.begin(), key.end());
-    return const_iterator((node && node.value()) ? node : nullptr);
+    auto node = root_node().find(key.begin(), key.end());
+    return const_iterator((node && node.value()) ? node : const_iterator());
   }
   iterator find(Key const& key) {
     return static_cast<trie const*>(this)->find(key).remove_const();
@@ -81,10 +85,10 @@ public:
     --size_;
   }
   const_iterator begin() const {
-    return const_iterator(root());
+    return const_iterator(root_node());
   }
   iterator begin() {
-    return iterator(node_i(impl_, impl_.root()));
+    return iterator(root_node());
   }
   const_iterator end() const {
     return const_iterator();
@@ -98,7 +102,8 @@ public:
     return size_;
   }
 
-  const_node_i root() const { return const_node_i(impl_, impl_.root()); }
+  node_proxy root_node() { return node_proxy(impl_, impl_.root()); }
+  const_node_proxy root_node() const { return const_node_proxy(impl_, impl_.root()); }
 private:
 
   impl_t impl_;
